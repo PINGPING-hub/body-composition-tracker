@@ -1139,12 +1139,26 @@ function updateChart() {
 
     const labels = sortedRecords.map(record => record.date);
 
-    const data = sortedRecords.map(record => {
+  
+   const data = sortedRecords.map(record => {
 
-        const value = Number(record[chartType]);
+    const rawValue = record[chartType];
 
-        return Number.isFinite(value) ? value : null;
+    if (
+        rawValue === null ||
+        rawValue === undefined ||
+        rawValue === ""
+    ) {
+        return null;
+    }
 
+    const value = Number(rawValue);
+
+    return Number.isFinite(value)
+        ? value
+        : null;
+
+});
     });
 
     const chartLabels = {
