@@ -8,7 +8,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <title>身體組成紀錄</title>
-
+    
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
 <style>
 
 * {
@@ -455,8 +457,40 @@ id="showVisceralFat"
 </div>
 
 
+<!-- 趨勢圖 -->
+
+<div class="card">
+
+<h2>📈 身體組成趨勢</h2>
+
+<select id="chartType" onchange="updateChart()">
+
+<option value="weight">體重（kg）</option>
+
+<option value="bodyFat">體脂率（%）</option>
+
+<option value="bmi">BMI</option>
+
+<option value="muscle">骨骼肌（kg）</option>
+
+<option value="bmr">基礎代謝（kcal）</option>
+
+<option value="bodyAge">身體年齡</option>
+
+<option value="visceralFat">內臟脂肪</option>
+
+</select>
+
+<div style="height:350px; margin-top:20px;">
+
+<canvas id="bodyChart"></canvas>
+
+</div>
+
+</div>
 
 <!-- 歷史紀錄 -->
+
 
 <div class="card">
 
@@ -710,7 +744,8 @@ function saveRecord() {
     displayRecords();
 
     displayLatest(record);
-
+    
+    updateChart();
 
     /* 清空輸入 */
 
@@ -1052,7 +1087,8 @@ setToday();
 
 displayRecords();
 
-
+updateChart();
+    
 /* 顯示最新資料 */
 
 if (
@@ -1072,7 +1108,176 @@ if (
     );
 
 }
+/* =========================
+   趨勢圖
+========================= */
 
+let bodyChart = null;
+
+
+function updateChart() {
+
+    const chartType =
+        document.getElementById(
+            "chartType"
+        ).value;
+
+
+    const sortedRecords =
+        [...records].sort(
+            (a, b) =>
+                new Date(a.date)
+                -
+                new Date(b.date)
+        );
+
+
+    const labels =
+        sortedRecords.map(
+            record =>
+                record.date
+        );
+
+
+    const data =
+        sortedRecords.map(
+            record =>
+                record[chartType]
+        );
+
+
+    const chartLabels = {
+
+        weight:
+            "體重（kg）",
+
+        bodyFat:
+            "體脂率（%）",
+
+        bmi:
+            "BMI",
+
+        muscle:
+            "骨骼肌（kg）",
+
+        bmr:
+            "基礎代謝（kcal）",
+
+        bodyAge:
+            "身體年齡",
+
+        visceralFat:
+            "內臟脂肪"
+
+    };
+
+
+    const ctx =
+        document
+        .getElementById(
+            "bodyChart"
+        );
+
+
+    /* 如果沒有資料 */
+
+    if (
+        sortedRecords.length === 0
+    ) {
+
+        if (bodyChart) {
+
+            bodyChart.destroy();
+
+            bodyChart = null;
+
+        }
+
+        return;
+
+    }
+
+
+    /* 刪除舊圖表 */
+
+    if (bodyChart) {
+
+        bodyChart.destroy();
+
+    }
+
+
+    /* 建立新圖表 */
+
+    bodyChart =
+        new Chart(
+            ctx,
+            {
+
+                type: "line",
+
+                data: {
+
+                    labels: labels,
+
+                    datasets: [
+
+                        {
+
+                            label:
+                                chartLabels[
+                                    chartType
+                                ],
+
+                            data: data,
+
+                            borderWidth: 3,
+
+                            tension: 0.3,
+
+                            pointRadius: 5,
+
+                            spanGaps: true
+
+                        }
+
+                    ]
+
+                },
+
+                options: {
+
+                    responsive: true,
+
+                    maintainAspectRatio: false,
+
+                    scales: {
+
+                        y: {
+
+                            beginAtZero: false
+
+                        }
+
+                    },
+
+                    plugins: {
+
+                        legend: {
+
+                            display: true
+
+                        }
+
+                    }
+
+                }
+
+            }
+
+        );
+
+}
 </script>
 
 </body>
