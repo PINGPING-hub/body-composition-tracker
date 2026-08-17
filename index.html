@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>身體組成紀錄</title>
+
+    <style>
+        body {
+            font-family: Arial, "Microsoft JhengHei", sans-serif;
+            background: #f5f7fa;
+            margin: 0;
+            padding: 30px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: auto;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+
+        label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        input {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+
+        button {
+            margin-top: 20px;
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            background: #4a90e2;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #357abd;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+        }
+
+        .stat {
+            background: #f8f9fb;
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .stat-title {
+            font-size: 14px;
+            color: #777;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            margin-top: 8px;
+        }
+
+        @media (max-width: 600px) {
+            body {
+                padding: 15px;
+            }
+
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .dashboard {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>📊 身體組成紀錄</h1>
+
+    <div class="card">
+        <h2>新增測量紀錄</h2>
+
+        <div class="form-grid">
+
+            <div>
+                <label>日期</label>
+                <input type="date" id="date">
+            </div>
+
+            <div>
+                <label>身高（cm）</label>
+                <input type="number" id="height" step="0.1">
+            </div>
+
+            <div>
+                <label>體重（kg）</label>
+                <input type="number" id="weight" step="0.1">
+            </div>
+
+            <div>
+                <label>體脂率（%）</label>
+                <input type="number" id="bodyFat" step="0.1">
+            </div>
+
+            <div>
+                <label>骨骼肌（kg）</label>
+                <input type="number" id="muscle" step="0.1">
+            </div>
+
+            <div>
+                <label>基礎代謝（kcal）</label>
+                <input type="number" id="bmr">
+            </div>
+
+            <div>
+                <label>身體年齡</label>
+                <input type="number" id="bodyAge">
+            </div>
+
+            <div>
+                <label>內臟脂肪</label>
+                <input type="number" id="visceralFat" step="0.1">
+            </div>
+
+        </div>
+
+        <button onclick="calculateBMI()">計算 BMI</button>
+
+        <p id="bmiResult"></p>
+    </div>
+
+
+    <div class="card">
+
+        <h2>最近一次測量</h2>
+
+        <div class="dashboard">
+
+            <div class="stat">
+                <div class="stat-title">體重</div>
+                <div class="stat-value" id="showWeight">--</div>
+            </div>
+
+            <div class="stat">
+                <div class="stat-title">體脂率</div>
+                <div class="stat-value" id="showBodyFat">--</div>
+            </div>
+
+            <div class="stat">
+                <div class="stat-title">BMI</div>
+                <div class="stat-value" id="showBMI">--</div>
+            </div>
+
+            <div class="stat">
+                <div class="stat-title">骨骼肌</div>
+                <div class="stat-value" id="showMuscle">--</div>
+            </div>
+
+            <div class="stat">
+                <div class="stat-title">基礎代謝</div>
+                <div class="stat-value" id="showBMR">--</div>
+            </div>
+
+            <div class="stat">
+                <div class="stat-title">身體年齡</div>
+                <div class="stat-value" id="showBodyAge">--</div>
+            </div>
+
+            <div class="stat">
+                <div class="stat-title">內臟脂肪</div>
+                <div class="stat-value" id="showVisceralFat">--</div>
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<script>
+
+function calculateBMI() {
+
+    const height = Number(document.getElementById("height").value);
+    const weight = Number(document.getElementById("weight").value);
+
+    if (!height || !weight) {
+        alert("請輸入身高及體重");
+        return;
+    }
+
+    const heightM = height / 100;
+    const bmi = weight / (heightM * heightM);
+
+    document.getElementById("bmiResult").innerText =
+        "您的 BMI： " + bmi.toFixed(1);
+
+    document.getElementById("showWeight").innerText =
+        weight.toFixed(1) + " kg";
+
+    document.getElementById("showBMI").innerText =
+        bmi.toFixed(1);
+
+    document.getElementById("showBodyFat").innerText =
+        (document.getElementById("bodyFat").value || "--") + " %";
+
+    document.getElementById("showMuscle").innerText =
+        (document.getElementById("muscle").value || "--") + " kg";
+
+    document.getElementById("showBMR").innerText =
+        (document.getElementById("bmr").value || "--") + " kcal";
+
+    document.getElementById("showBodyAge").innerText =
+        (document.getElementById("bodyAge").value || "--");
+
+    document.getElementById("showVisceralFat").innerText =
+        (document.getElementById("visceralFat").value || "--");
+}
+
+</script>
+
+</body>
+</html>
