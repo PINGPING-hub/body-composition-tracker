@@ -697,30 +697,44 @@ function saveRecord() {
         );
 
 
-    const record = {
+const record = {
 
-        id: Date.now(),
+    id: Date.now(),
 
-        date: date,
+    date: date,
 
-        height: height,
+    height: height,
 
-        weight: weight,
+    weight: weight,
 
-        bodyFat: bodyFat || null,
+    bodyFat:
+        document.getElementById("bodyFat").value !== ""
+        ? bodyFat
+        : null,
 
-        bmi: bmi,
+    bmi: bmi,
 
-        muscle: muscle || null,
+    muscle:
+        document.getElementById("muscle").value !== ""
+        ? muscle
+        : null,
 
-        bmr: bmr || null,
+    bmr:
+        document.getElementById("bmr").value !== ""
+        ? bmr
+        : null,
 
-        bodyAge: bodyAge || null,
+    bodyAge:
+        document.getElementById("bodyAge").value !== ""
+        ? bodyAge
+        : null,
 
-        visceralFat:
-            visceralFat || null
+    visceralFat:
+        document.getElementById("visceralFat").value !== ""
+        ? visceralFat
+        : null
 
-    };
+};
 
 
     records.push(record);
@@ -1114,156 +1128,138 @@ if (
 
 let bodyChart = null;
 
-
 function updateChart() {
 
-    const chartType =
-        document.getElementById(
-            "chartType"
-        ).value;
+    const chartType = document.getElementById("chartType").value;
 
+    const sortedRecords = [...records].sort(
+        (a, b) => new Date(a.date) - new Date(b.date)
+    );
 
-    const sortedRecords =
-        [...records].sort(
-            (a, b) =>
-                new Date(a.date)
-                -
-                new Date(b.date)
-        );
+    const labels = sortedRecords.map(record => record.date);
 
+    const data = sortedRecords.map(record => {
 
-    const labels =
-        sortedRecords.map(
-            record =>
-                record.date
-        );
+        const value = Number(record[chartType]);
 
+        return Number.isFinite(value) ? value : null;
 
-    const data =
-        sortedRecords.map(
-            record =>
-                record[chartType]
-        );
-
+    });
 
     const chartLabels = {
 
-        weight:
-            "體重（kg）",
+        weight: "體重（kg）",
 
-        bodyFat:
-            "體脂率（%）",
+        bodyFat: "體脂率（%）",
 
-        bmi:
-            "BMI",
+        bmi: "BMI",
 
-        muscle:
-            "骨骼肌（kg）",
+        muscle: "骨骼肌（kg）",
 
-        bmr:
-            "基礎代謝（kcal）",
+        bmr: "基礎代謝（kcal）",
 
-        bodyAge:
-            "身體年齡",
+        bodyAge: "身體年齡",
 
-        visceralFat:
-            "內臟脂肪"
+        visceralFat: "內臟脂肪"
 
     };
 
+    const canvas = document.getElementById("bodyChart");
 
-    const ctx =
-        document
-        .getElementById(
-            "bodyChart"
-        );
-
-
-    /* 如果沒有資料 */
-
-    if (
-        sortedRecords.length === 0
-    ) {
-
-        if (bodyChart) {
-
-            bodyChart.destroy();
-
-            bodyChart = null;
-
-        }
-
+    if (!canvas) {
+        console.error("找不到 bodyChart");
         return;
-
     }
-
-
-    /* 刪除舊圖表 */
 
     if (bodyChart) {
-
         bodyChart.destroy();
-
+        bodyChart = null;
     }
 
+    if (sortedRecords.length === 0) {
+        return;
+    }
 
-    /* 建立新圖表 */
+    /*
+     * 如果選擇的項目全部沒有數值，
+     * 就不建立空圖表
+     */
 
-    bodyChart =
-        new Chart(
-            ctx,
-            {
+    const hasData = data.some(
+        value => value !== null
+    );
 
-                type: "line",
+    if (!hasData) {
 
-                data: {
+        console.warn(
+            "目前選擇的項目沒有有效資料：",
+            chartType
+        );
 
-                    labels: labels,
+        return;
+    }
 
-                    datasets: [
+    bodyChart = new Chart(
+        canvas,
+        {
 
-                        {
+            type: "line",
 
-                            label:
-                                chartLabels[
-                                    chartType
-                                ],
+            data: {
 
-                            data: data,
+                labels: labels,
 
-                            borderWidth: 3,
+                datasets: [
 
-                            tension: 0.3,
+                    {
 
-                            pointRadius: 5,
+                        label: chartLabels[chartType],
 
-                            spanGaps: true
+                        data: data,
 
-                        }
+                        borderWidth: 3,
 
-                    ]
+                        pointRadius: 6,
 
-                },
+                        pointHoverRadius: 8,
 
-                options: {
+                        tension: 0.25,
 
-                    responsive: true,
+                        fill: false
 
-                    maintainAspectRatio: false,
+                    }
 
-                    scales: {
+                ]
 
-                        y: {
+            },
 
-                            beginAtZero: false
+            options: {
+
+                responsive: true,
+
+                maintainAspectRatio: false,
+
+                scales: {
+
+                    x: {
+
+                        display: true,
+
+                        grid: {
+
+                            display: true
 
                         }
 
                     },
 
-                    plugins: {
+                    y: {
 
-                        legend: {
+                        display: true,
+
+                        beginAtZero: false,
+
+                        grid: {
 
                             display: true
 
@@ -1271,13 +1267,25 @@ function updateChart() {
 
                     }
 
+                },
+
+                plugins: {
+
+                    legend: {
+
+                        display: true
+
+                    }
+
                 }
 
             }
 
-        );
+        }
+    );
 
 }
+
 </script>
 
 </body>
