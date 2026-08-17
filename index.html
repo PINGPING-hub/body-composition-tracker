@@ -1,1382 +1,815 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
-
 <head>
-
 <meta charset="UTF-8">
-
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<title>身體組成紀錄</title>
-    
+<title>體態紀錄站</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
 <style>
-
-* {
-    box-sizing: border-box;
+:root{
+  --bg:#fff8f1;
+  --card:#ffffff;
+  --text:#25324a;
+  --muted:#6f7480;
+  --line:#eadfd5;
+  --accent:#d96c4c;
+  --accent-soft:#fff0e8;
+  --danger:#c84b5f;
+  --warning:#b17a22;
+  --shadow:0 10px 30px rgba(86,57,39,.07);
 }
-
-body {
-    font-family: Arial, "Microsoft JhengHei", sans-serif;
-    background: #f4f6f8;
-    margin: 0;
-    padding: 20px;
-    color: #333;
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:Arial,"Microsoft JhengHei",sans-serif;
+  background:var(--bg);
+  color:var(--text);
 }
-
-.container {
-    max-width: 1000px;
-    margin: auto;
+header{
+  padding:26px 18px 18px;
+  border-bottom:1px solid var(--line);
+  background:linear-gradient(135deg,#fff3e8 0%,#fffaf6 58%,#f3f5fb 100%);
 }
-
-h1 {
-    text-align: center;
-    margin-bottom: 25px;
+.wrap{max-width:1100px;margin:0 auto}
+h1{margin:0 0 8px;font-size:32px}
+.subtitle{color:var(--muted);font-size:14px}
+.statusbar{
+  margin-top:18px;
+  padding:14px 16px;
+  background:var(--accent-soft);
+  border:1px solid #f0d2c3;
+  border-radius:12px;
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:10px;
+  font-weight:700;
 }
-
-.card {
-    background: white;
-    border-radius: 15px;
-    padding: 25px;
-    margin-bottom: 20px;
-    box-shadow: 0 3px 12px rgba(0,0,0,0.08);
+.dot{width:10px;height:10px;border-radius:50%;background:var(--accent);display:inline-block}
+.tabs{
+  background:rgba(255,255,255,.25);
+  border-bottom:1px solid var(--line);
 }
-
-h2 {
-    margin-top: 0;
+.tabrow{
+  display:flex;
+  gap:2px;
+  overflow:auto;
 }
-
-/* 輸入區 */
-
-.form-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 15px;
+.tabbtn{
+  appearance:none;
+  border:0;
+  background:transparent;
+  padding:16px 20px 13px;
+  font-size:15px;
+  font-weight:700;
+  color:#59656a;
+  border-bottom:3px solid transparent;
+  cursor:pointer;
+  white-space:nowrap;
 }
-
-label {
-    display: block;
-    font-weight: bold;
-    margin-bottom: 6px;
+.tabbtn.active{color:var(--accent);border-bottom-color:var(--accent)}
+main{padding:28px 18px 50px}
+.tabpage{display:none}
+.tabpage.active{display:block}
+.section-title{font-size:22px;margin:0 0 16px}
+.card{
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:20px;
+  padding:20px;
+  box-shadow:var(--shadow);
+  margin-bottom:18px;
 }
-
-input {
-    width: 100%;
-    padding: 11px;
-    border: 1px solid #ccc;
-    border-radius: 8px;
-    font-size: 16px;
+.grid{display:grid;gap:14px}
+.grid-2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.grid-3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.grid-4{grid-template-columns:repeat(4,minmax(0,1fr))}
+label{display:block;font-size:14px;font-weight:700;margin-bottom:6px}
+input,select{
+  width:100%;
+  border:1px solid #e6d8cf;
+  border-radius:10px;
+  padding:11px 12px;
+  font-size:16px;
+  background:#fff;
+  color:var(--text);
 }
-
-button {
-    border: none;
-    border-radius: 8px;
-    padding: 11px 18px;
-    font-size: 16px;
-    cursor: pointer;
+small,.note{color:var(--muted);font-size:13px;line-height:1.6}
+.btn{
+  border:0;
+  border-radius:10px;
+  padding:11px 16px;
+  font-size:15px;
+  font-weight:700;
+  cursor:pointer;
 }
-
-.save-btn {
-    width: 100%;
-    margin-top: 20px;
-    background: #4a90e2;
-    color: white;
+.btn-primary{background:var(--accent);color:#fff}
+.btn-secondary{background:#fff7f2;color:var(--text);border:1px solid var(--line)}
+.btn-danger{background:#fff0f0;color:var(--danger);border:1px solid #eccaca}
+.actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px}
+.stat{
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:14px;
+  padding:18px;
 }
-
-.save-btn:hover {
-    background: #357abd;
+.stat .k{font-size:13px;color:var(--muted);font-weight:700}
+.stat .v{font-size:26px;font-weight:800;margin-top:7px}
+.stat .s{font-size:12px;color:var(--muted);margin-top:5px}
+.positive{color:#4f6f9f}
+.negative{color:#c84b5f}
+.neutral{color:var(--text)}
+.table-wrap{overflow:auto;border:1px solid var(--line);border-radius:12px}
+table{width:100%;border-collapse:collapse;min-width:900px;background:#fff}
+th,td{padding:11px 10px;border-bottom:1px solid var(--line);text-align:center;font-size:14px}
+th{background:#fff7f2;font-weight:800}
+tr:last-child td{border-bottom:0}
+.empty{text-align:center;color:var(--muted);padding:26px}
+.preview{
+  margin-top:16px;
+  padding:14px 16px;
+  background:#fff8f4;
+  border-radius:12px;
+  border:1px solid #f0ded3;
+  display:grid;
+  gap:8px;
 }
-
-.delete-btn {
-    background: #e74c3c;
-    color: white;
-    padding: 6px 10px;
-    font-size: 14px;
+.preview-row{display:flex;justify-content:space-between;gap:12px}
+.composition-bar{
+  display:flex;
+  height:18px;
+  border-radius:999px;
+  overflow:hidden;
+  background:#f3e9e2;
+  margin-top:12px;
 }
-
-.delete-btn:hover {
-    background: #c0392b;
+.seg-fat{background:#f0a07e}
+.seg-muscle{background:#7186b5}
+.seg-other{background:#e2bd73}
+.legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:12px;font-size:13px;color:var(--muted)}
+.legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px}
+.legend .fat::before{background:#f0a07e}
+.legend .muscle::before{background:#7186b5}
+.legend .other::before{background:#e2bd73}
+.chartbox{height:390px;margin-top:16px}
+.inline-setting{
+  display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap
 }
-
-.edit-btn {
-    background: #f0ad4e;
-    color: white;
-    padding: 6px 10px;
-    font-size: 14px;
-    margin-right: 6px;
+.inline-setting strong{font-size:18px}
+.badge{
+  display:inline-block;padding:5px 9px;border-radius:999px;background:var(--accent-soft);
+  color:var(--accent);font-size:12px;font-weight:800
 }
-
-.edit-btn:hover {
-    background: #d99524;
+@media(max-width:800px){
+  h1{font-size:28px}
+  .grid-4,.grid-3,.grid-2{grid-template-columns:1fr}
+  .chartbox{height:320px}
+  .tabbtn{padding-left:14px;padding-right:14px}
 }
-
-.cancel-btn {
-    width: 100%;
-    margin-top: 10px;
-    background: #6c757d;
-    color: white;
-}
-
-.cancel-btn:hover {
-    background: #565e64;
-}
-
-/* BMI */
-
-.bmi-result {
-    margin-top: 15px;
-    font-size: 18px;
-    font-weight: bold;
-}
-
-/* Dashboard */
-
-.dashboard {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 15px;
-}
-
-.stat {
-    background: #f7f8fa;
-    border-radius: 10px;
-    padding: 15px;
-    text-align: center;
-}
-
-.stat-title {
-    font-size: 14px;
-    color: #777;
-}
-
-.stat-value {
-    font-size: 23px;
-    font-weight: bold;
-    margin-top: 8px;
-}
-
-/* 表格 */
-
-.table-wrapper {
-    overflow-x: auto;
-}
-
-table {
-    width: 100%;
-    border-collapse: collapse;
-    min-width: 850px;
-}
-
-th,
-td {
-    padding: 10px;
-    border-bottom: 1px solid #ddd;
-    text-align: center;
-}
-
-th {
-    background: #f1f3f5;
-}
-
-.empty {
-    text-align: center;
-    color: #888;
-    padding: 20px;
-}
-
-/* 手機 */
-
-@media (max-width: 700px) {
-
-    body {
-        padding: 10px;
-    }
-
-    .card {
-        padding: 18px;
-    }
-
-    .form-grid {
-        grid-template-columns: 1fr;
-    }
-
-    .dashboard {
-        grid-template-columns: repeat(2, 1fr);
-    }
-
-}
-
 </style>
-
 </head>
-
-
 <body>
+<header>
+  <div class="wrap">
+    <h1>體態紀錄站</h1>
+    <div class="subtitle">每天記一筆，長期看得見。資料儲存在目前瀏覽器。</div>
+    <div class="statusbar">
+      <span class="dot"></span>
+      <span id="recordStatus">目前 0 筆紀錄</span>
+      <span id="heightStatus" class="badge">身高尚未設定</span>
+    </div>
+  </div>
+</header>
 
-<div class="container">
-
-<h1>📊 身體組成紀錄</h1>
-
-
-<!-- 新增紀錄 -->
-
-<div class="card">
-
-<h2>➕ 新增測量紀錄</h2>
-
-<div class="form-grid">
-
-<div>
-
-<label>日期</label>
-
-<input
-type="date"
-id="date"
->
-
+<div class="tabs">
+  <div class="wrap tabrow">
+    <button class="tabbtn active" data-tab="daily">每日紀錄</button>
+    <button class="tabbtn" data-tab="settings">目標設定</button>
+    <button class="tabbtn" data-tab="analysis">數據分析</button>
+    <button class="tabbtn" data-tab="trend">趨勢圖</button>
+  </div>
 </div>
 
+<main>
+<div class="wrap">
 
-<div>
+<section id="daily" class="tabpage active">
+  <h2 class="section-title">每日紀錄</h2>
 
-<label>身高（cm）</label>
+  <div class="card">
+    <div class="inline-setting">
+      <div>
+        <small>固定身高</small>
+        <strong id="dailyHeightText">尚未設定</strong>
+      </div>
+      <button class="btn btn-secondary" onclick="openSettingsTab()">前往設定</button>
+    </div>
+  </div>
 
-<input
-type="number"
-id="height"
-step="0.1"
-placeholder="例如 162"
->
+  <div class="card">
+    <h3>新增測量紀錄</h3>
+    <div class="grid grid-3">
+      <div><label>日期</label><input type="date" id="date"></div>
+      <div><label>體重（kg）</label><input type="number" step="0.1" id="weight" placeholder="例如 80.0"></div>
+      <div><label>體脂率（%）</label><input type="number" step="0.1" id="bodyFat" placeholder="例如 29.5"></div>
+      <div><label>骨骼肌率（%）</label><input type="number" step="0.1" id="muscleRate" placeholder="例如 28.0"></div>
+      <div><label>基礎代謝（kcal）</label><input type="number" id="bmr" placeholder="例如 1530"></div>
+      <div><label>身體年齡</label><input type="number" id="bodyAge" placeholder="例如 41"></div>
+      <div><label>內臟脂肪</label><input type="number" step="0.1" id="visceralFat" placeholder="例如 11"></div>
+    </div>
+
+    <div class="preview">
+      <div class="preview-row"><span>BMI</span><strong id="previewBMI">--</strong></div>
+      <div class="preview-row"><span>體脂肪重量（估算）</span><strong id="previewFatMass">--</strong></div>
+      <div class="preview-row"><span>骨骼肌重量（估算）</span><strong id="previewMuscleMass">--</strong></div>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary" id="saveBtn" onclick="saveRecord()">💾 儲存紀錄</button>
+      <button class="btn btn-secondary" id="cancelEditBtn" onclick="cancelEdit()" style="display:none">取消編輯</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>最近一次測量</h3>
+    <div class="grid grid-4">
+      <div class="stat"><div class="k">體重</div><div class="v" id="latestWeight">--</div></div>
+      <div class="stat"><div class="k">體脂率</div><div class="v" id="latestBodyFat">--</div></div>
+      <div class="stat"><div class="k">BMI</div><div class="v" id="latestBMI">--</div></div>
+      <div class="stat"><div class="k">骨骼肌率</div><div class="v" id="latestMuscleRate">--</div></div>
+      <div class="stat"><div class="k">體脂肪重量</div><div class="v" id="latestFatMass">--</div></div>
+      <div class="stat"><div class="k">骨骼肌重量</div><div class="v" id="latestMuscleMass">--</div></div>
+      <div class="stat"><div class="k">基礎代謝</div><div class="v" id="latestBMR">--</div></div>
+      <div class="stat"><div class="k">內臟脂肪</div><div class="v" id="latestVisceralFat">--</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>歷史紀錄</h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>日期</th><th>體重</th><th>體脂率</th><th>BMI</th><th>骨骼肌率</th>
+            <th>體脂肪重量</th><th>骨骼肌重量</th><th>基礎代謝</th><th>身體年齡</th><th>內臟脂肪</th><th>操作</th>
+          </tr>
+        </thead>
+        <tbody id="recordTable"></tbody>
+      </table>
+    </div>
+    <div id="emptyHistory" class="empty">目前還沒有紀錄</div>
+  </div>
+</section>
+
+<section id="settings" class="tabpage">
+  <h2 class="section-title">目標設定</h2>
+
+  <div class="card">
+    <h3>基本設定</h3>
+    <div class="grid grid-3">
+      <div><label>固定身高（cm）</label><input type="number" step="0.1" id="settingHeight" placeholder="例如 162"></div>
+      <div><label>目標體重（kg）</label><input type="number" step="0.1" id="goalWeight" placeholder="例如 65"></div>
+      <div><label>目標體脂率（%）</label><input type="number" step="0.1" id="goalBodyFat" placeholder="例如 25"></div>
+    </div>
+    <div class="actions">
+      <button class="btn btn-primary" onclick="saveSettings()">儲存設定</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>分析基準</h3>
+    <div class="grid grid-2">
+      <div>
+        <label>比較方式</label>
+        <select id="baselineMode" onchange="toggleBaselineDate()">
+          <option value="first">使用第一筆紀錄</option>
+          <option value="date">自訂起始日期</option>
+        </select>
+      </div>
+      <div id="baselineDateWrap" style="display:none">
+        <label>起始日期</label>
+        <input type="date" id="baselineDate">
+      </div>
+    </div>
+    <p class="note">數據分析會用這個基準點與最新一筆紀錄比較。</p>
+    <div class="actions">
+      <button class="btn btn-primary" onclick="saveSettings()">儲存分析設定</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>目前設定</h3>
+    <div class="grid grid-3">
+      <div class="stat"><div class="k">身高</div><div class="v" id="settingSummaryHeight">--</div></div>
+      <div class="stat"><div class="k">目標體重</div><div class="v" id="settingSummaryGoalWeight">--</div></div>
+      <div class="stat"><div class="k">目標體脂率</div><div class="v" id="settingSummaryGoalBodyFat">--</div></div>
+    </div>
+  </div>
+</section>
+
+<section id="analysis" class="tabpage">
+  <h2 class="section-title">數據分析</h2>
+  <div class="card">
+    <div class="inline-setting">
+      <div>
+        <small>分析區間</small>
+        <strong id="analysisRange">資料不足</strong>
+      </div>
+      <span class="badge" id="analysisCount">0 筆</span>
+    </div>
+  </div>
+
+  <div class="grid grid-3">
+    <div class="stat"><div class="k">累積體重變化</div><div class="v" id="analysisWeight">--</div></div>
+    <div class="stat"><div class="k">累積體脂肪重量變化</div><div class="v" id="analysisFatMass">--</div></div>
+    <div class="stat"><div class="k">累積骨骼肌重量變化（估算）</div><div class="v" id="analysisMuscleMass">--</div></div>
+  </div>
+
+  <div class="card" style="margin-top:18px">
+    <h3>脂肪＋肌肉減少 vs. 體重減少</h3>
+    <div class="grid grid-3">
+      <div class="stat"><div class="k">脂肪＋肌肉減少</div><div class="v" id="combinedLoss">--</div></div>
+      <div class="stat"><div class="k">體重減少</div><div class="v" id="weightLoss">--</div></div>
+      <div class="stat"><div class="k">其他／水分等變化</div><div class="v" id="otherLoss">--</div></div>
+    </div>
+    <p class="note">骨骼肌估算重量＝體重×骨骼肌率÷100；體脂肪重量＝體重×體脂率÷100。其他／水分等變化為體重變化扣除脂肪與骨骼肌估算變化後的差額，僅作趨勢參考。</p>
+  </div>
+
+  <div class="card">
+    <h3>體重變化組成</h3>
+    <div class="grid grid-3">
+      <div class="stat"><div class="k">脂肪占減重量</div><div class="v" id="fatShare">--</div></div>
+      <div class="stat"><div class="k">骨骼肌占減重量</div><div class="v" id="muscleShare">--</div></div>
+      <div class="stat"><div class="k">其他／水分占減重量</div><div class="v" id="otherShare">--</div></div>
+    </div>
+    <div class="composition-bar" id="compositionBar">
+      <div class="seg-fat" id="fatSeg" style="width:0%"></div>
+      <div class="seg-muscle" id="muscleSeg" style="width:0%"></div>
+      <div class="seg-other" id="otherSeg" style="width:0%"></div>
+    </div>
+    <div class="legend">
+      <span class="fat">脂肪</span><span class="muscle">骨骼肌</span><span class="other">其他／水分等</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>目標進度</h3>
+    <div class="grid grid-3">
+      <div class="stat"><div class="k">距離目標體重</div><div class="v" id="goalWeightGap">--</div></div>
+      <div class="stat"><div class="k">距離目標體脂率</div><div class="v" id="goalBodyFatGap">--</div></div>
+      <div class="stat"><div class="k">目前 BMI</div><div class="v" id="analysisCurrentBMI">--</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>月統計</h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>月份</th><th>筆數</th><th>體重變化</th><th>體脂率變化</th><th>骨骼肌重量變化</th><th>體脂肪重量變化</th></tr>
+        </thead>
+        <tbody id="monthlyTable"></tbody>
+      </table>
+    </div>
+    <div id="emptyMonthly" class="empty">目前沒有足夠的月統計資料</div>
+  </div>
+</section>
+
+<section id="trend" class="tabpage">
+  <h2 class="section-title">趨勢圖</h2>
+  <div class="card">
+    <div class="grid grid-2">
+      <div>
+        <label>顯示項目</label>
+        <select id="chartType" onchange="updateChart()">
+          <option value="weight">體重（kg）</option>
+          <option value="bodyFat">體脂率（%）</option>
+          <option value="bmi">BMI</option>
+          <option value="muscleRate">骨骼肌率（%）</option>
+          <option value="fatMass">體脂肪重量（kg）</option>
+          <option value="muscleMass">骨骼肌估算重量（kg）</option>
+          <option value="bmr">基礎代謝（kcal）</option>
+          <option value="bodyAge">身體年齡</option>
+          <option value="visceralFat">內臟脂肪</option>
+        </select>
+      </div>
+    </div>
+    <div class="chartbox"><canvas id="bodyChart"></canvas></div>
+    <div id="chartEmpty" class="empty" style="display:none">目前沒有可繪製的資料</div>
+  </div>
+</section>
 
 </div>
-
-
-<div>
-
-<label>體重（kg）</label>
-
-<input
-type="number"
-id="weight"
-step="0.1"
-placeholder="例如 81.2"
->
-
-</div>
-
-
-<div>
-
-<label>體脂率（%）</label>
-
-<input
-type="number"
-id="bodyFat"
-step="0.1"
-placeholder="例如 28.2"
->
-
-</div>
-
-
-<div>
-
-<label>骨骼肌（kg）</label>
-
-<input
-type="number"
-id="muscle"
-step="0.1"
-placeholder="例如 28.9"
->
-
-</div>
-
-
-<div>
-
-<label>基礎代謝（kcal）</label>
-
-<input
-type="number"
-id="bmr"
-placeholder="例如 1530"
->
-
-</div>
-
-
-<div>
-
-<label>身體年齡</label>
-
-<input
-type="number"
-id="bodyAge"
-placeholder="例如 41"
->
-
-</div>
-
-
-<div>
-
-<label>內臟脂肪</label>
-
-<input
-type="number"
-id="visceralFat"
-step="0.1"
-placeholder="例如 11"
->
-
-</div>
-
-</div>
-
-
-<div
-class="bmi-result"
-id="bmiResult"
->
-BMI：尚未計算
-</div>
-
-
-<button
-class="save-btn"
-id="saveButton"
-onclick="saveRecord()"
->
-💾 儲存紀錄
-</button>
-
-<button
-class="cancel-btn"
-id="cancelEditButton"
-onclick="cancelEdit()"
-style="display:none;"
->
-取消編輯
-</button>
-
-</div>
-
-
-
-<!-- 最近一次資料 -->
-
-<div class="card">
-
-<h2>📌 最近一次測量</h2>
-
-<div class="dashboard">
-
-<div class="stat">
-
-<div class="stat-title">
-體重
-</div>
-
-<div
-class="stat-value"
-id="showWeight"
->
---
-</div>
-
-</div>
-
-
-<div class="stat">
-
-<div class="stat-title">
-體脂率
-</div>
-
-<div
-class="stat-value"
-id="showBodyFat"
->
---
-</div>
-
-</div>
-
-
-<div class="stat">
-
-<div class="stat-title">
-BMI
-</div>
-
-<div
-class="stat-value"
-id="showBMI"
->
---
-</div>
-
-</div>
-
-
-<div class="stat">
-
-<div class="stat-title">
-骨骼肌
-</div>
-
-<div
-class="stat-value"
-id="showMuscle"
->
---
-</div>
-
-</div>
-
-
-<div class="stat">
-
-<div class="stat-title">
-基礎代謝
-</div>
-
-<div
-class="stat-value"
-id="showBMR"
->
---
-</div>
-
-</div>
-
-
-<div class="stat">
-
-<div class="stat-title">
-身體年齡
-</div>
-
-<div
-class="stat-value"
-id="showBodyAge"
->
---
-</div>
-
-</div>
-
-
-<div class="stat">
-
-<div class="stat-title">
-內臟脂肪
-</div>
-
-<div
-class="stat-value"
-id="showVisceralFat"
->
---
-</div>
-
-</div>
-
-</div>
-
-</div>
-
-
-<!-- 趨勢圖 -->
-
-<div class="card">
-
-<h2>📈 身體組成趨勢</h2>
-
-<select id="chartType" onchange="updateChart()">
-
-<option value="weight">體重（kg）</option>
-
-<option value="bodyFat">體脂率（%）</option>
-
-<option value="bmi">BMI</option>
-
-<option value="muscle">骨骼肌（kg）</option>
-
-<option value="bmr">基礎代謝（kcal）</option>
-
-<option value="bodyAge">身體年齡</option>
-
-<option value="visceralFat">內臟脂肪</option>
-
-</select>
-
-<div style="height:350px; margin-top:20px;">
-
-<canvas id="bodyChart"></canvas>
-
-</div>
-
-</div>
-
-<!-- 歷史紀錄 -->
-
-
-<div class="card">
-
-<h2>📋 歷史紀錄</h2>
-
-<div class="table-wrapper">
-
-<table>
-
-<thead>
-
-<tr>
-
-<th>日期</th>
-
-<th>體重</th>
-
-<th>體脂率</th>
-
-<th>BMI</th>
-
-<th>骨骼肌</th>
-
-<th>基礎代謝</th>
-
-<th>身體年齡</th>
-
-<th>內臟脂肪</th>
-
-<th>操作</th>
-
-</tr>
-
-</thead>
-
-<tbody
-id="recordTable"
->
-
-</tbody>
-
-</table>
-
-</div>
-
-<div
-class="empty"
-id="emptyMessage"
->
-目前還沒有紀錄
-</div>
-
-</div>
-
-
-</div>
-
-
+</main>
 
 <script>
+const RECORD_KEY = "bodyRecordsV2";
+const LEGACY_KEY = "bodyRecords";
+const SETTINGS_KEY = "bodyTrackerSettingsV2";
 
-let bodyChart = null;
-    
-/* =========================
-   初始化
-========================= */
-
-let records =
-JSON.parse(
-    localStorage.getItem("bodyRecords")
-) || [];
-
-let editingId = null;
-
-
-/* =========================
-   今天日期
-========================= */
-
-function setToday() {
-
-    const today =
-        new Date();
-
-    const year =
-        today.getFullYear();
-
-    const month =
-        String(
-            today.getMonth() + 1
-        ).padStart(2, "0");
-
-    const day =
-        String(
-            today.getDate()
-        ).padStart(2, "0");
-
-    document.getElementById("date").value =
-        `${year}-${month}-${day}`;
-}
-
-
-/* =========================
-   計算 BMI
-========================= */
-
-function calculateBMI(
-    height,
-    weight
-) {
-
-    if (
-        !height ||
-        !weight
-    ) {
-        return null;
-    }
-
-    const heightM =
-        height / 100;
-
-    return weight /
-        (heightM * heightM);
-}
-
-
-/* =========================
-   儲存紀錄
-========================= */
-
-function saveRecord() {
-
-    const date =
-        document.getElementById(
-            "date"
-        ).value;
-
-    const height =
-        Number(
-            document.getElementById(
-                "height"
-            ).value
-        );
-
-    const weight =
-        Number(
-            document.getElementById(
-                "weight"
-            ).value
-        );
-
-    const bodyFat =
-        Number(
-            document.getElementById(
-                "bodyFat"
-            ).value
-        );
-
-    const muscle =
-        Number(
-            document.getElementById(
-                "muscle"
-            ).value
-        );
-
-    const bmr =
-        Number(
-            document.getElementById(
-                "bmr"
-            ).value
-        );
-
-    const bodyAge =
-        Number(
-            document.getElementById(
-                "bodyAge"
-            ).value
-        );
-
-    const visceralFat =
-        Number(
-            document.getElementById(
-                "visceralFat"
-            ).value
-        );
-
-
-    /* 檢查必要資料 */
-
-    if (
-        !date ||
-        !height ||
-        !weight
-    ) {
-
-        alert(
-            "請至少輸入日期、身高及體重"
-        );
-
-        return;
-    }
-
-
-    const bmi =
-        calculateBMI(
-            height,
-            weight
-        );
-
-
-const record = {
-
-    id: editingId ?? Date.now(),
-
-    date: date,
-
-    height: height,
-
-    weight: weight,
-
-    bodyFat:
-        document.getElementById("bodyFat").value !== ""
-        ? bodyFat
-        : null,
-
-    bmi: bmi,
-
-    muscle:
-        document.getElementById("muscle").value !== ""
-        ? muscle
-        : null,
-
-    bmr:
-        document.getElementById("bmr").value !== ""
-        ? bmr
-        : null,
-
-    bodyAge:
-        document.getElementById("bodyAge").value !== ""
-        ? bodyAge
-        : null,
-
-    visceralFat:
-        document.getElementById("visceralFat").value !== ""
-        ? visceralFat
-        : null
-
+let records = [];
+let settings = {
+  height: null,
+  goalWeight: null,
+  goalBodyFat: null,
+  baselineMode: "first",
+  baselineDate: ""
 };
+let editingId = null;
+let bodyChart = null;
 
-
-    if (editingId === null) {
-        records.push(record);
-    } else {
-        records = records.map(item =>
-            item.id === editingId ? record : item
-        );
-    }
-
-
-    /* 儲存到瀏覽器 */
-
-    localStorage.setItem(
-        "bodyRecords",
-        JSON.stringify(records)
-    );
-
-
-    alert(
-        editingId === null
-        ? "✅ 紀錄已儲存！"
-        : "✅ 紀錄已更新！"
-    );
-
-
-    /* 更新畫面 */
-
-    displayRecords();
-
-    displayLatest(record);
-    
-    updateChart();
-
-    /* 清空輸入 / 結束編輯 */
-
-    resetForm();
-
+function toNumberOrNull(v){
+  if(v === "" || v === null || v === undefined) return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
 }
 
-
-/* =========================
-   顯示最近一次資料
-========================= */
-
-function displayLatest(
-    record
-) {
-
-    document.getElementById(
-        "showWeight"
-    ).innerText =
-        record.weight.toFixed(1)
-        + " kg";
-
-
-    document.getElementById(
-        "showBodyFat"
-    ).innerText =
-        record.bodyFat !== null
-        ? record.bodyFat.toFixed(1)
-          + " %"
-        : "--";
-
-
-    document.getElementById(
-        "showBMI"
-    ).innerText =
-        record.bmi.toFixed(1);
-
-
-    document.getElementById(
-        "showMuscle"
-    ).innerText =
-        record.muscle !== null
-        ? record.muscle.toFixed(1)
-          + " kg"
-        : "--";
-
-
-    document.getElementById(
-        "showBMR"
-    ).innerText =
-        record.bmr !== null
-        ? record.bmr
-          + " kcal"
-        : "--";
-
-
-    document.getElementById(
-        "showBodyAge"
-    ).innerText =
-        record.bodyAge !== null
-        ? record.bodyAge
-        : "--";
-
-
-    document.getElementById(
-        "showVisceralFat"
-    ).innerText =
-        record.visceralFat !== null
-        ? record.visceralFat
-        : "--";
-
+function calcBMI(weight){
+  if(!settings.height || !weight) return null;
+  const m = settings.height / 100;
+  return weight / (m*m);
+}
+function calcFatMass(weight, bodyFat){
+  return (weight != null && bodyFat != null) ? weight * bodyFat / 100 : null;
+}
+function calcMuscleMass(weight, muscleRate){
+  return (weight != null && muscleRate != null) ? weight * muscleRate / 100 : null;
+}
+function fmt(n, digits=1, unit=""){
+  return n == null || !Number.isFinite(Number(n)) ? "--" : `${Number(n).toFixed(digits)}${unit ? " "+unit : ""}`;
+}
+function signed(n, digits=1, unit=""){
+  if(n == null || !Number.isFinite(Number(n))) return "--";
+  const x = Number(n);
+  const sign = x > 0 ? "+" : "";
+  return `${sign}${x.toFixed(digits)}${unit ? " "+unit : ""}`;
+}
+function todayString(){
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
 }
 
-
-/* =========================
-   顯示歷史紀錄
-========================= */
-
-function displayRecords() {
-
-    const table =
-        document.getElementById(
-            "recordTable"
-        );
-
-    const emptyMessage =
-        document.getElementById(
-            "emptyMessage"
-        );
-
-
-    table.innerHTML = "";
-
-
-    if (
-        records.length === 0
-    ) {
-
-        emptyMessage.style.display =
-            "block";
-
-        return;
-
-    }
-
-
-    emptyMessage.style.display =
-        "none";
-
-
-    /* 最新日期排前面 */
-
-    const sortedRecords =
-        [...records].sort(
-            (a, b) =>
-                new Date(b.date)
-                -
-                new Date(a.date)
-        );
-
-
-    sortedRecords.forEach(
-        record => {
-
-            const row =
-                document.createElement(
-                    "tr"
-                );
-
-
-            row.innerHTML = `
-
-                <td>
-                    ${record.date}
-                </td>
-
-                <td>
-                    ${record.weight.toFixed(1)}
-                </td>
-
-                <td>
-                    ${
-                        record.bodyFat !== null
-                        ? record.bodyFat.toFixed(1) + "%"
-                        : "--"
-                    }
-                </td>
-
-                <td>
-                    ${record.bmi.toFixed(1)}
-                </td>
-
-                <td>
-                    ${
-                        record.muscle !== null
-                        ? record.muscle.toFixed(1)
-                        : "--"
-                    }
-                </td>
-
-                <td>
-                    ${
-                        record.bmr !== null
-                        ? record.bmr
-                        : "--"
-                    }
-                </td>
-
-                <td>
-                    ${
-                        record.bodyAge !== null
-                        ? record.bodyAge
-                        : "--"
-                    }
-                </td>
-
-                <td>
-                    ${
-                        record.visceralFat !== null
-                        ? record.visceralFat
-                        : "--"
-                    }
-                </td>
-
-                <td>
-
-                    <button
-                        class="edit-btn"
-                        onclick="editRecord(${record.id})"
-                    >
-                        編輯
-                    </button>
-
-                    <button
-                        class="delete-btn"
-                        onclick="deleteRecord(${record.id})"
-                    >
-                        刪除
-                    </button>
-
-                </td>
-
-            `;
-
-
-            table.appendChild(row);
-
-        }
-    );
-
-}
-
-
-/* =========================
-   編輯紀錄
-========================= */
-
-function editRecord(id) {
-
-    const record = records.find(item => item.id === id);
-
-    if (!record) {
-        return;
-    }
-
-    editingId = id;
-
-    document.getElementById("date").value = record.date;
-    document.getElementById("height").value = record.height ?? "";
-    document.getElementById("weight").value = record.weight ?? "";
-    document.getElementById("bodyFat").value = record.bodyFat ?? "";
-    document.getElementById("muscle").value = record.muscle ?? "";
-    document.getElementById("bmr").value = record.bmr ?? "";
-    document.getElementById("bodyAge").value = record.bodyAge ?? "";
-    document.getElementById("visceralFat").value = record.visceralFat ?? "";
-
-    document.getElementById("bmiResult").innerText =
-        `BMI：${Number(record.bmi).toFixed(1)}`;
-
-    document.getElementById("saveButton").innerText = "💾 更新紀錄";
-    document.getElementById("cancelEditButton").style.display = "block";
-
-    window.scrollTo({ top: 0, behavior: "smooth" });
-}
-
-function cancelEdit() {
-    resetForm();
-}
-
-function resetForm() {
-
-    editingId = null;
-
-    document.getElementById("weight").value = "";
-    document.getElementById("bodyFat").value = "";
-    document.getElementById("muscle").value = "";
-    document.getElementById("bmr").value = "";
-    document.getElementById("bodyAge").value = "";
-    document.getElementById("visceralFat").value = "";
-
-    document.getElementById("bmiResult").innerText = "BMI：尚未計算";
-    document.getElementById("saveButton").innerText = "💾 儲存紀錄";
-    document.getElementById("cancelEditButton").style.display = "none";
-
-    setToday();
-}
-
-
-/* =========================
-   刪除紀錄
-========================= */
-
-function deleteRecord(
-    id
-) {
-
-    const confirmDelete =
-        confirm(
-            "確定要刪除這筆紀錄嗎？"
-        );
-
-
-    if (
-        !confirmDelete
-    ) {
-        return;
-    }
-
-
-    records =
-        records.filter(
-            record =>
-                record.id !== id
-        );
-
-
-    localStorage.setItem(
-        "bodyRecords",
-        JSON.stringify(records)
-    );
-
-
-    displayRecords();
-    updateChart();
-
-
-    if (
-        records.length > 0
-    ) {
-
-        const sortedRecords =
-            [...records].sort(
-                (a, b) =>
-                    new Date(b.date)
-                    -
-                    new Date(a.date)
-            );
-
-        displayLatest(
-            sortedRecords[0]
-        );
-
-    } else {
-
-        clearLatest();
-
-    }
-
-}
-
-
-/* =========================
-   清除最近資料
-========================= */
-
-function clearLatest() {
-
-    document.getElementById(
-        "showWeight"
-    ).innerText = "--";
-
-    document.getElementById(
-        "showBodyFat"
-    ).innerText = "--";
-
-    document.getElementById(
-        "showBMI"
-    ).innerText = "--";
-
-    document.getElementById(
-        "showMuscle"
-    ).innerText = "--";
-
-    document.getElementById(
-        "showBMR"
-    ).innerText = "--";
-
-    document.getElementById(
-        "showBodyAge"
-    ).innerText = "--";
-
-    document.getElementById(
-        "showVisceralFat"
-    ).innerText = "--";
-
-}
-
-
-/* =========================
-   網頁載入
-========================= */
-
-setToday();
-
-displayRecords();
-
-updateChart();
-
-
-if (
-    records.length > 0
-) {
-
-    const sortedRecords =
-        [...records].sort(
-            (a, b) =>
-                new Date(b.date)
-                -
-                new Date(a.date)
-        );
-
-    displayLatest(
-        sortedRecords[0]
-    );
-
-}
-
-
-/* =========================
-   趨勢圖
-========================= */
-
-function updateChart() {
-
-    const chartType = document.getElementById("chartType").value;
-
-    const sortedRecords = [...records].sort(
-        (a, b) => new Date(a.date) - new Date(b.date)
-    );
-
-    const labels = sortedRecords.map(record => record.date);
-
-    const data = sortedRecords.map(record => {
-
-        const rawValue = record[chartType];
-
-        if (
-            rawValue === null ||
-            rawValue === undefined ||
-            rawValue === ""
-        ) {
-            return null;
-        }
-
-        const value = Number(rawValue);
-
-        return Number.isFinite(value) ? value : null;
-
+function migrateLegacyRecords(){
+  const modern = localStorage.getItem(RECORD_KEY);
+  if(modern){
+    try{return JSON.parse(modern) || [];}catch(e){return [];}
+  }
+  const legacy = localStorage.getItem(LEGACY_KEY);
+  if(!legacy) return [];
+  try{
+    const old = JSON.parse(legacy) || [];
+    return old.map(r => {
+      let muscleRate = null;
+      if(r.muscleRate != null) muscleRate = Number(r.muscleRate);
+      // 舊版 muscle 若為 kg 無法可靠轉回百分比，因此不自動猜測。
+      return {
+        id: r.id || Date.now()+Math.random(),
+        date: r.date,
+        weight: toNumberOrNull(r.weight),
+        bodyFat: toNumberOrNull(r.bodyFat),
+        muscleRate: muscleRate,
+        bmr: toNumberOrNull(r.bmr),
+        bodyAge: toNumberOrNull(r.bodyAge),
+        visceralFat: toNumberOrNull(r.visceralFat)
+      };
     });
-
-    const chartLabels = {
-
-        weight: "體重（kg）",
-
-        bodyFat: "體脂率（%）",
-
-        bmi: "BMI",
-
-        muscle: "骨骼肌（kg）",
-
-        bmr: "基礎代謝（kcal）",
-
-        bodyAge: "身體年齡",
-
-        visceralFat: "內臟脂肪"
-
-    };
-
-    const canvas = document.getElementById("bodyChart");
-
-    if (!canvas) {
-        console.error("找不到 bodyChart");
-        return;
-    }
-
-    if (bodyChart) {
-        bodyChart.destroy();
-        bodyChart = null;
-    }
-
-    if (sortedRecords.length === 0) {
-        return;
-    }
-
-    /*
-     * 如果選擇的項目全部沒有數值，
-     * 就不建立空圖表
-     */
-
-    const hasData = data.some(
-        value => value !== null
-    );
-
-    if (!hasData) {
-
-        console.warn(
-            "目前選擇的項目沒有有效資料：",
-            chartType
-        );
-
-        return;
-    }
-
-    bodyChart = new Chart(
-        canvas,
-        {
-
-            type: "line",
-
-            data: {
-
-                labels: labels,
-
-                datasets: [
-
-                    {
-
-                        label: chartLabels[chartType],
-
-                        data: data,
-
-                        borderWidth: 3,
-
-                        pointRadius: 6,
-
-                        pointHoverRadius: 8,
-
-                        tension: 0.25,
-
-                        fill: false
-
-                    }
-
-                ]
-
-            },
-
-            options: {
-
-                responsive: true,
-
-                maintainAspectRatio: false,
-
-                scales: {
-
-                    x: {
-
-                        display: true,
-
-                        grid: {
-
-                            display: true
-
-                        }
-
-                    },
-
-                    y: {
-
-                        display: true,
-
-                        beginAtZero: false,
-
-                        grid: {
-
-                            display: true
-
-                        }
-
-                    }
-
-                },
-
-                plugins: {
-
-                    legend: {
-
-                        display: true
-
-                    }
-
-                }
-
-            }
-
-        }
-    );
-
+  }catch(e){return [];}
 }
 
+function loadAll(){
+  records = migrateLegacyRecords();
+  try{
+    const s = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}");
+    settings = {...settings, ...s};
+  }catch(e){}
+  saveRecords();
+}
+
+function saveRecords(){
+  localStorage.setItem(RECORD_KEY, JSON.stringify(records));
+}
+function persistSettings(){
+  localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+}
+
+function derivedRecord(r){
+  const bmi = calcBMI(r.weight);
+  const fatMass = calcFatMass(r.weight, r.bodyFat);
+  const muscleMass = calcMuscleMass(r.weight, r.muscleRate);
+  return {...r,bmi,fatMass,muscleMass};
+}
+
+function sortedAsc(){
+  return [...records].sort((a,b)=>new Date(a.date)-new Date(b.date));
+}
+function sortedDesc(){
+  return [...records].sort((a,b)=>new Date(b.date)-new Date(a.date));
+}
+
+function setTab(name){
+  document.querySelectorAll(".tabbtn").forEach(b=>b.classList.toggle("active", b.dataset.tab===name));
+  document.querySelectorAll(".tabpage").forEach(p=>p.classList.toggle("active", p.id===name));
+  if(name==="analysis") updateAnalysis();
+  if(name==="trend") setTimeout(updateChart, 0);
+}
+document.querySelectorAll(".tabbtn").forEach(btn=>{
+  btn.addEventListener("click",()=>setTab(btn.dataset.tab));
+});
+function openSettingsTab(){setTab("settings");}
+
+function refreshSettingUI(){
+  document.getElementById("settingHeight").value = settings.height ?? "";
+  document.getElementById("goalWeight").value = settings.goalWeight ?? "";
+  document.getElementById("goalBodyFat").value = settings.goalBodyFat ?? "";
+  document.getElementById("baselineMode").value = settings.baselineMode || "first";
+  document.getElementById("baselineDate").value = settings.baselineDate || "";
+  toggleBaselineDate();
+
+  document.getElementById("dailyHeightText").textContent = settings.height ? `${settings.height} cm` : "尚未設定";
+  document.getElementById("heightStatus").textContent = settings.height ? `身高 ${settings.height} cm` : "身高尚未設定";
+  document.getElementById("settingSummaryHeight").textContent = settings.height ? `${settings.height} cm` : "--";
+  document.getElementById("settingSummaryGoalWeight").textContent = settings.goalWeight ? `${settings.goalWeight} kg` : "--";
+  document.getElementById("settingSummaryGoalBodyFat").textContent = settings.goalBodyFat ? `${settings.goalBodyFat} %` : "--";
+}
+
+function saveSettings(){
+  settings.height = toNumberOrNull(document.getElementById("settingHeight").value);
+  settings.goalWeight = toNumberOrNull(document.getElementById("goalWeight").value);
+  settings.goalBodyFat = toNumberOrNull(document.getElementById("goalBodyFat").value);
+  settings.baselineMode = document.getElementById("baselineMode").value;
+  settings.baselineDate = document.getElementById("baselineDate").value;
+  persistSettings();
+  refreshSettingUI();
+  updatePreview();
+  updateLatest();
+  updateHistory();
+  updateAnalysis();
+  updateChart();
+  alert("✅ 設定已儲存");
+}
+
+function toggleBaselineDate(){
+  const mode = document.getElementById("baselineMode").value;
+  document.getElementById("baselineDateWrap").style.display = mode==="date" ? "block" : "none";
+}
+
+function updatePreview(){
+  const weight = toNumberOrNull(document.getElementById("weight").value);
+  const bodyFat = toNumberOrNull(document.getElementById("bodyFat").value);
+  const muscleRate = toNumberOrNull(document.getElementById("muscleRate").value);
+  document.getElementById("previewBMI").textContent = fmt(calcBMI(weight),1);
+  document.getElementById("previewFatMass").textContent = fmt(calcFatMass(weight,bodyFat),1,"kg");
+  document.getElementById("previewMuscleMass").textContent = fmt(calcMuscleMass(weight,muscleRate),1,"kg");
+}
+["weight","bodyFat","muscleRate"].forEach(id=>{
+  document.getElementById(id).addEventListener("input", updatePreview);
+});
+
+function resetForm(){
+  editingId = null;
+  ["weight","bodyFat","muscleRate","bmr","bodyAge","visceralFat"].forEach(id=>document.getElementById(id).value="");
+  document.getElementById("date").value = todayString();
+  document.getElementById("saveBtn").textContent = "💾 儲存紀錄";
+  document.getElementById("cancelEditBtn").style.display="none";
+  updatePreview();
+}
+function cancelEdit(){resetForm();}
+
+function saveRecord(){
+  if(!settings.height){
+    alert("請先到「目標設定」設定固定身高，才能計算 BMI。");
+    setTab("settings");
+    return;
+  }
+  const date = document.getElementById("date").value;
+  const weight = toNumberOrNull(document.getElementById("weight").value);
+  if(!date || weight == null){
+    alert("請至少輸入日期與體重。");
+    return;
+  }
+  const item = {
+    id: editingId || Date.now(),
+    date,
+    weight,
+    bodyFat: toNumberOrNull(document.getElementById("bodyFat").value),
+    muscleRate: toNumberOrNull(document.getElementById("muscleRate").value),
+    bmr: toNumberOrNull(document.getElementById("bmr").value),
+    bodyAge: toNumberOrNull(document.getElementById("bodyAge").value),
+    visceralFat: toNumberOrNull(document.getElementById("visceralFat").value)
+  };
+
+  const wasEditing = editingId !== null;
+  if(wasEditing){
+    records = records.map(r=>r.id===editingId ? item : r);
+  }else{
+    records.push(item);
+  }
+  saveRecords();
+  resetForm();
+  refreshAll();
+  alert(wasEditing ? "✅ 紀錄已更新" : "✅ 紀錄已儲存");
+}
+
+function editRecord(id){
+  const r = records.find(x=>x.id===id);
+  if(!r) return;
+  editingId = id;
+  document.getElementById("date").value = r.date;
+  document.getElementById("weight").value = r.weight ?? "";
+  document.getElementById("bodyFat").value = r.bodyFat ?? "";
+  document.getElementById("muscleRate").value = r.muscleRate ?? "";
+  document.getElementById("bmr").value = r.bmr ?? "";
+  document.getElementById("bodyAge").value = r.bodyAge ?? "";
+  document.getElementById("visceralFat").value = r.visceralFat ?? "";
+  document.getElementById("saveBtn").textContent = "✅ 更新紀錄";
+  document.getElementById("cancelEditBtn").style.display="inline-block";
+  updatePreview();
+  setTab("daily");
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+
+function deleteRecord(id){
+  if(!confirm("確定要刪除這筆紀錄嗎？")) return;
+  records = records.filter(r=>r.id!==id);
+  saveRecords();
+  refreshAll();
+}
+
+function updateHistory(){
+  const tbody = document.getElementById("recordTable");
+  tbody.innerHTML="";
+  const list = sortedDesc();
+  document.getElementById("emptyHistory").style.display = list.length ? "none" : "block";
+  list.forEach(raw=>{
+    const r = derivedRecord(raw);
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${r.date}</td>
+      <td>${fmt(r.weight,1)}</td>
+      <td>${fmt(r.bodyFat,1,"%")}</td>
+      <td>${fmt(r.bmi,1)}</td>
+      <td>${fmt(r.muscleRate,1,"%")}</td>
+      <td>${fmt(r.fatMass,1,"kg")}</td>
+      <td>${fmt(r.muscleMass,1,"kg")}</td>
+      <td>${r.bmr ?? "--"}</td>
+      <td>${r.bodyAge ?? "--"}</td>
+      <td>${r.visceralFat ?? "--"}</td>
+      <td>
+        <button class="btn btn-secondary" onclick="editRecord(${r.id})">編輯</button>
+        <button class="btn btn-danger" onclick="deleteRecord(${r.id})">刪除</button>
+      </td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+function updateLatest(){
+  const r0 = sortedDesc()[0];
+  const ids = ["latestWeight","latestBodyFat","latestBMI","latestMuscleRate","latestFatMass","latestMuscleMass","latestBMR","latestVisceralFat"];
+  if(!r0){
+    ids.forEach(id=>document.getElementById(id).textContent="--");
+    return;
+  }
+  const r=derivedRecord(r0);
+  document.getElementById("latestWeight").textContent=fmt(r.weight,1,"kg");
+  document.getElementById("latestBodyFat").textContent=fmt(r.bodyFat,1,"%");
+  document.getElementById("latestBMI").textContent=fmt(r.bmi,1);
+  document.getElementById("latestMuscleRate").textContent=fmt(r.muscleRate,1,"%");
+  document.getElementById("latestFatMass").textContent=fmt(r.fatMass,1,"kg");
+  document.getElementById("latestMuscleMass").textContent=fmt(r.muscleMass,1,"kg");
+  document.getElementById("latestBMR").textContent=r.bmr!=null?`${r.bmr} kcal`:"--";
+  document.getElementById("latestVisceralFat").textContent=r.visceralFat!=null?String(r.visceralFat):"--";
+}
+
+function getAnalysisSlice(){
+  const list = sortedAsc();
+  if(!list.length) return [];
+  if(settings.baselineMode==="date" && settings.baselineDate){
+    const filtered = list.filter(r=>r.date>=settings.baselineDate);
+    return filtered.length ? filtered : [];
+  }
+  return list;
+}
+
+function updateAnalysis(){
+  const list = getAnalysisSlice();
+  document.getElementById("analysisCount").textContent=`${list.length} 筆`;
+  if(list.length<2){
+    document.getElementById("analysisRange").textContent="至少需要 2 筆紀錄";
+    ["analysisWeight","analysisFatMass","analysisMuscleMass","combinedLoss","weightLoss","otherLoss","fatShare","muscleShare","otherShare","goalWeightGap","goalBodyFatGap","analysisCurrentBMI"].forEach(id=>document.getElementById(id).textContent="--");
+    ["fatSeg","muscleSeg","otherSeg"].forEach(id=>document.getElementById(id).style.width="0%");
+    updateMonthly();
+    return;
+  }
+
+  const start=derivedRecord(list[0]);
+  const end=derivedRecord(list[list.length-1]);
+  document.getElementById("analysisRange").textContent=`${start.date} → ${end.date}`;
+
+  const weightChange=end.weight-start.weight;
+  const fatMassChange=(end.fatMass!=null && start.fatMass!=null)?end.fatMass-start.fatMass:null;
+  const muscleMassChange=(end.muscleMass!=null && start.muscleMass!=null)?end.muscleMass-start.muscleMass:null;
+
+  document.getElementById("analysisWeight").textContent=signed(weightChange,1,"kg");
+  document.getElementById("analysisFatMass").textContent=signed(fatMassChange,1,"kg");
+  document.getElementById("analysisMuscleMass").textContent=signed(muscleMassChange,1,"kg");
+
+  const weightLossVal=start.weight-end.weight;
+  const fatLoss=(start.fatMass!=null && end.fatMass!=null)?start.fatMass-end.fatMass:null;
+  const muscleLoss=(start.muscleMass!=null && end.muscleMass!=null)?start.muscleMass-end.muscleMass:null;
+
+  if(weightLossVal>0 && fatLoss!=null && muscleLoss!=null){
+    const combined=fatLoss+muscleLoss;
+    const other=weightLossVal-combined;
+    document.getElementById("combinedLoss").textContent=fmt(combined,1,"kg");
+    document.getElementById("weightLoss").textContent=fmt(weightLossVal,1,"kg");
+    document.getElementById("otherLoss").textContent=fmt(other,1,"kg");
+
+    const fatPct=Math.max(0, fatLoss/weightLossVal*100);
+    const musclePct=Math.max(0, muscleLoss/weightLossVal*100);
+    const otherPct=Math.max(0, other/weightLossVal*100);
+    const total=fatPct+musclePct+otherPct || 1;
+    const f=fatPct/total*100, m=musclePct/total*100, o=otherPct/total*100;
+
+    document.getElementById("fatShare").textContent=fmt(fatPct,1,"%");
+    document.getElementById("muscleShare").textContent=fmt(musclePct,1,"%");
+    document.getElementById("otherShare").textContent=fmt(otherPct,1,"%");
+    document.getElementById("fatSeg").style.width=`${f}%`;
+    document.getElementById("muscleSeg").style.width=`${m}%`;
+    document.getElementById("otherSeg").style.width=`${o}%`;
+  }else{
+    ["combinedLoss","weightLoss","otherLoss","fatShare","muscleShare","otherShare"].forEach(id=>document.getElementById(id).textContent="--");
+    ["fatSeg","muscleSeg","otherSeg"].forEach(id=>document.getElementById(id).style.width="0%");
+  }
+
+  document.getElementById("goalWeightGap").textContent = settings.goalWeight!=null ? fmt(end.weight-settings.goalWeight,1,"kg") : "--";
+  document.getElementById("goalBodyFatGap").textContent = settings.goalBodyFat!=null && end.bodyFat!=null ? fmt(end.bodyFat-settings.goalBodyFat,1,"%") : "--";
+  document.getElementById("analysisCurrentBMI").textContent=fmt(end.bmi,1);
+  updateMonthly();
+}
+
+function updateMonthly(){
+  const tbody=document.getElementById("monthlyTable");
+  tbody.innerHTML="";
+  const list=sortedAsc();
+  const groups={};
+  list.forEach(r=>{
+    const key=r.date.slice(0,7);
+    (groups[key] ||= []).push(r);
+  });
+  const months=Object.keys(groups).sort();
+  document.getElementById("emptyMonthly").style.display=months.length?"none":"block";
+  months.forEach(month=>{
+    const arr=groups[month];
+    const first=derivedRecord(arr[0]);
+    const last=derivedRecord(arr[arr.length-1]);
+    const tr=document.createElement("tr");
+    tr.innerHTML=`
+      <td>${month}</td>
+      <td>${arr.length}</td>
+      <td>${signed(last.weight-first.weight,1,"kg")}</td>
+      <td>${(first.bodyFat!=null&&last.bodyFat!=null)?signed(last.bodyFat-first.bodyFat,1,"%"):"--"}</td>
+      <td>${(first.muscleMass!=null&&last.muscleMass!=null)?signed(last.muscleMass-first.muscleMass,1,"kg"):"--"}</td>
+      <td>${(first.fatMass!=null&&last.fatMass!=null)?signed(last.fatMass-first.fatMass,1,"kg"):"--"}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+function updateChart(){
+  const canvas=document.getElementById("bodyChart");
+  if(!canvas || typeof Chart==="undefined") return;
+  const type=document.getElementById("chartType").value;
+  const labelsMap={
+    weight:"體重（kg）", bodyFat:"體脂率（%）", bmi:"BMI", muscleRate:"骨骼肌率（%）",
+    fatMass:"體脂肪重量（kg）", muscleMass:"骨骼肌估算重量（kg）",
+    bmr:"基礎代謝（kcal）", bodyAge:"身體年齡", visceralFat:"內臟脂肪"
+  };
+  const list=sortedAsc().map(derivedRecord);
+  const labels=list.map(r=>r.date);
+  const data=list.map(r=>r[type]==null?null:Number(r[type]));
+  const hasData=data.some(v=>v!=null && Number.isFinite(v));
+  document.getElementById("chartEmpty").style.display=hasData?"none":"block";
+  if(bodyChart){bodyChart.destroy();bodyChart=null;}
+  if(!hasData) return;
+  bodyChart=new Chart(canvas,{
+    type:"line",
+    data:{labels,datasets:[{label:labelsMap[type],data,borderWidth:3,pointRadius:5,pointHoverRadius:7,tension:.25,spanGaps:true}]},
+    options:{responsive:true,maintainAspectRatio:false,scales:{y:{beginAtZero:false}},plugins:{legend:{display:true}}}
+  });
+}
+
+function refreshAll(){
+  document.getElementById("recordStatus").textContent=`目前 ${records.length} 筆紀錄`;
+  refreshSettingUI();
+  updateHistory();
+  updateLatest();
+  updateAnalysis();
+  updateChart();
+}
+
+loadAll();
+document.getElementById("date").value=todayString();
+refreshAll();
+updatePreview();
 </script>
-
 </body>
-
 </html>
