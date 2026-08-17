@@ -99,6 +99,29 @@ button {
     background: #c0392b;
 }
 
+.edit-btn {
+    background: #f0ad4e;
+    color: white;
+    padding: 6px 10px;
+    font-size: 14px;
+    margin-right: 6px;
+}
+
+.edit-btn:hover {
+    background: #d99524;
+}
+
+.cancel-btn {
+    width: 100%;
+    margin-top: 10px;
+    background: #6c757d;
+    color: white;
+}
+
+.cancel-btn:hover {
+    background: #565e64;
+}
+
 /* BMI */
 
 .bmi-result {
@@ -324,9 +347,19 @@ BMI：尚未計算
 
 <button
 class="save-btn"
+id="saveButton"
 onclick="saveRecord()"
 >
 💾 儲存紀錄
+</button>
+
+<button
+class="cancel-btn"
+id="cancelEditButton"
+onclick="cancelEdit()"
+style="display:none;"
+>
+取消編輯
 </button>
 
 </div>
@@ -563,6 +596,8 @@ JSON.parse(
     localStorage.getItem("bodyRecords")
 ) || [];
 
+let editingId = null;
+
 
 /* =========================
    今天日期
@@ -701,7 +736,7 @@ function saveRecord() {
 
 const record = {
 
-    id: Date.now(),
+    id: editingId ?? Date.now(),
 
     date: date,
 
@@ -739,7 +774,13 @@ const record = {
 };
 
 
-    records.push(record);
+    if (editingId === null) {
+        records.push(record);
+    } else {
+        records = records.map(item =>
+            item.id === editingId ? record : item
+        );
+    }
 
 
     /* 儲存到瀏覽器 */
@@ -751,7 +792,9 @@ const record = {
 
 
     alert(
-        "✅ 紀錄已儲存！"
+        editingId === null
+        ? "✅ 紀錄已儲存！"
+        : "✅ 紀錄已更新！"
     );
 
 
@@ -763,37 +806,9 @@ const record = {
     
     updateChart();
 
-    /* 清空輸入 */
+    /* 清空輸入 / 結束編輯 */
 
-    document.getElementById(
-        "weight"
-    ).value = "";
-
-    document.getElementById(
-        "bodyFat"
-    ).value = "";
-
-    document.getElementById(
-        "muscle"
-    ).value = "";
-
-    document.getElementById(
-        "bmr"
-    ).value = "";
-
-    document.getElementById(
-        "bodyAge"
-    ).value = "";
-
-    document.getElementById(
-        "visceralFat"
-    ).value = "";
-
-
-    document.getElementById(
-        "bmiResult"
-    ).innerText =
-        "BMI：尚未計算";
+    resetForm();
 
 }
 
@@ -977,6 +992,13 @@ function displayRecords() {
                 <td>
 
                     <button
+                        class="edit-btn"
+                        onclick="editRecord(${record.id})"
+                    >
+                        編輯
+                    </button>
+
+                    <button
                         class="delete-btn"
                         onclick="deleteRecord(${record.id})"
                     >
@@ -993,6 +1015,61 @@ function displayRecords() {
         }
     );
 
+}
+
+
+/* =========================
+   編輯紀錄
+========================= */
+
+function editRecord(id) {
+
+    const record = records.find(item => item.id === id);
+
+    if (!record) {
+        return;
+    }
+
+    editingId = id;
+
+    document.getElementById("date").value = record.date;
+    document.getElementById("height").value = record.height ?? "";
+    document.getElementById("weight").value = record.weight ?? "";
+    document.getElementById("bodyFat").value = record.bodyFat ?? "";
+    document.getElementById("muscle").value = record.muscle ?? "";
+    document.getElementById("bmr").value = record.bmr ?? "";
+    document.getElementById("bodyAge").value = record.bodyAge ?? "";
+    document.getElementById("visceralFat").value = record.visceralFat ?? "";
+
+    document.getElementById("bmiResult").innerText =
+        `BMI：${Number(record.bmi).toFixed(1)}`;
+
+    document.getElementById("saveButton").innerText = "💾 更新紀錄";
+    document.getElementById("cancelEditButton").style.display = "block";
+
+    window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function cancelEdit() {
+    resetForm();
+}
+
+function resetForm() {
+
+    editingId = null;
+
+    document.getElementById("weight").value = "";
+    document.getElementById("bodyFat").value = "";
+    document.getElementById("muscle").value = "";
+    document.getElementById("bmr").value = "";
+    document.getElementById("bodyAge").value = "";
+    document.getElementById("visceralFat").value = "";
+
+    document.getElementById("bmiResult").innerText = "BMI：尚未計算";
+    document.getElementById("saveButton").innerText = "💾 儲存紀錄";
+    document.getElementById("cancelEditButton").style.display = "none";
+
+    setToday();
 }
 
 
@@ -1031,6 +1108,7 @@ function deleteRecord(
 
 
     displayRecords();
+    updateChart();
 
 
     if (
@@ -1139,26 +1217,22 @@ function updateChart() {
 
     const labels = sortedRecords.map(record => record.date);
 
-  
-   const data = sortedRecords.map(record => {
+    const data = sortedRecords.map(record => {
 
-    const rawValue = record[chartType];
+        const rawValue = record[chartType];
 
-    if (
-        rawValue === null ||
-        rawValue === undefined ||
-        rawValue === ""
-    ) {
-        return null;
-    }
+        if (
+            rawValue === null ||
+            rawValue === undefined ||
+            rawValue === ""
+        ) {
+            return null;
+        }
 
-    const value = Number(rawValue);
+        const value = Number(rawValue);
 
-    return Number.isFinite(value)
-        ? value
-        : null;
+        return Number.isFinite(value) ? value : null;
 
-});
     });
 
     const chartLabels = {
