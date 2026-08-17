@@ -552,6 +552,8 @@ id="emptyMessage"
 
 <script>
 
+let bodyChart = null;
+    
 /* =========================
    初始化
 ========================= */
@@ -1102,8 +1104,7 @@ setToday();
 displayRecords();
 
 updateChart();
-    
-/* 顯示最新資料 */
+
 
 if (
     records.length > 0
@@ -1122,11 +1123,11 @@ if (
     );
 
 }
+
+
 /* =========================
    趨勢圖
 ========================= */
-
-let bodyChart = null;
 
 function updateChart() {
 
