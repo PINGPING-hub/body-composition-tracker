@@ -163,6 +163,19 @@ import { getFirestore, collection, doc, setDoc, getDoc, getDocs, deleteDoc, onSn
 const firebaseConfig={apiKey:"AIzaSyAcGH4lhd9rPXvXFXeg65HZ48zN41ZtCFQ",authDomain:"body-composition-tracker-631f1.firebaseapp.com",projectId:"body-composition-tracker-631f1",storageBucket:"body-composition-tracker-631f1.firebasestorage.app",messagingSenderId:"100946828404",appId:"1:100946828404:web:4bd44eee9d6b1c4a6ec521"};
 const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app),provider=new GoogleAuthProvider();
 let currentUser=null,records=[],settings={height:null,goalWeight:null,goalBodyFat:null,baselineMode:"first",baselineDate:"",visibility:"private",publicName:""},editingId=null,unsubRecords=null,unsubSettings=null,trendChart=null,publicChart=null;
+
+// 比較分析功能狀態
+let comparisons=[];
+let selectedComparisonId=null;
+let compareSelfRecords=[];
+let comparePartnerRecords=[];
+let unsubComparisons=null;
+let unsubCompareSelf=null;
+let unsubComparePartner=null;
+let compareWeightChart=null;
+let compareFatChart=null;
+let compareMuscleChart=null;
+let currentInviteId=new URLSearchParams(location.search).get("compareInvite") || "";
 const $=id=>document.getElementById(id),num=v=>(v===""||v===null||v===undefined||!Number.isFinite(Number(v)))?null:Number(v),today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`},fmt=(v,d=1,u="")=>v==null||!Number.isFinite(Number(v))?"--":`${Number(v).toFixed(d)}${u?` ${u}`:""}`,signed=(v,d=1,u="")=>v==null||!Number.isFinite(Number(v))?"--":`${Number(v)>0?"+":""}${Number(v).toFixed(d)}${u?` ${u}`:""}`,bmi=w=>settings.height&&w?w/((settings.height/100)**2):null,fatMass=(w,f)=>w!=null&&f!=null?w*f/100:null,derive=r=>({...r,bmi:bmi(r.weight),fatMass:fatMass(r.weight,r.bodyFat)}),asc=()=>[...records].sort((a,b)=>a.date.localeCompare(b.date)),desc=()=>[...records].sort((a,b)=>b.date.localeCompare(a.date));
 window.switchTab=name=>{document.querySelectorAll('.tabbtn').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));document.querySelectorAll('.tabpage').forEach(p=>p.classList.toggle('active',p.id===name));if(name==='analysis')renderAnalysis();if(name==='trend')setTimeout(renderTrend,20);if(name==='compare')setTimeout(renderComparisonDashboard,20)};document.querySelectorAll('.tabbtn').forEach(b=>b.addEventListener('click',()=>window.switchTab(b.dataset.tab)));
 function setLoading(show,msg='正在連接雲端資料…'){$('loading').textContent=msg;$('loading').classList.toggle('hidden',!show)}
