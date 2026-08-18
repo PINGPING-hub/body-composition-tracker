@@ -231,7 +231,10 @@ function renderAnalysis(){const x=calcAnalysis();if(!x){$('analysisRange').textC
 function renderMonthly(){const tb=$('monthlyTable');tb.innerHTML='';const groups={};asc().forEach(r=>(groups[r.date.slice(0,7)]||=[]).push(r));Object.keys(groups).sort().forEach(m=>{const a=derive(groups[m][0]),b=derive(groups[m][groups[m].length-1]),tr=document.createElement('tr');tr.innerHTML=`<td>${m}</td><td>${groups[m].length}</td><td>${signed(b.weight-a.weight,1,'kg')}</td><td>${a.bodyFat!=null&&b.bodyFat!=null?signed(b.bodyFat-a.bodyFat,1,'%'):'--'}</td><td>${a.muscleKg!=null&&b.muscleKg!=null?signed(b.muscleKg-a.muscleKg,1,'kg'):'--'}</td><td>${a.fatMass!=null&&b.fatMass!=null?signed(b.fatMass-a.fatMass,1,'kg'):'--'}</td>`;tb.appendChild(tr)})}
 function renderTrend(){if(typeof Chart==='undefined')return;if(trendChart){trendChart.destroy();trendChart=null}const type=$('chartType').value,list=asc().map(derive),data=list.map(r=>r[type]??null);if(!data.some(v=>v!=null))return;const labels={weight:'體重（kg）',bodyFat:'體脂率（%）',bmi:'BMI',muscleKg:'骨骼肌重（kg）',fatMass:'體脂肪重量（kg）',bmr:'基礎代謝（kcal）',bodyAge:'身體年齡',visceralFat:'內臟脂肪'};trendChart=new Chart($('trendChart'),{type:'line',data:{labels:list.map(r=>r.date),datasets:[{label:labels[type],data,borderWidth:3,pointRadius:5,tension:.25,spanGaps:true}]},options:{responsive:true,maintainAspectRatio:false,scales:{y:{beginAtZero:false}}}})}$('chartType').addEventListener('change',renderTrend);function renderAll(){renderSettings();renderHistory();renderLatest();renderAnalysis();renderTrend();renderComparisonDashboard();updatePreview()}
 
+
 function comparisonRef(id){return doc(db,'comparisons',id)}
+function comparisonMembershipRef(uid,pairId){return doc(db,'comparisonMemberships',uid,'pairs',pairId)}
+function comparisonMembershipsRef(uid){return collection(db,'comparisonMemberships',uid,'pairs')}
 function comparisonMembersRef(id,uid){return doc(db,'comparisons',id,'members',uid)}
 function comparisonMemberRecordsRef(id,uid){return collection(db,'comparisons',id,'members',uid,'records')}
 
@@ -242,70 +245,138 @@ function comparisonDisplayName(c,uid){
 }
 function comparisonPartnerUid(c){
   if(!currentUser)return null;
-  return c.inviterUid===currentUser.uid?c.inviteeUid:c.inviterUid;
+  return c.inviterUid===currentUser.uid ? c.inviteeUid : c.inviterUid;
 }
 function comparisonPartnerName(c){
   const uid=comparisonPartnerUid(c);
-  return uid?comparisonDisplayName(c,uid):'等待對方接受';
+  return uid ? comparisonDisplayName(c,uid) : '等待對方接受';
 }
 
+/*
+ * 比較清單只讀取自己的 membership 路徑，
+ * 不再對 comparisons 做全域 array-contains 查詢。
+ */
 function startComparisonSync(){
   if(!currentUser)return;
   if(unsubComparisons)unsubComparisons();
-  const q=query(collection(db,'comparisons'),where('memberUids','array-contains',currentUser.uid));
-  unsubComparisons=onSnapshot(q,snap=>{
-    comparisons=snap.docs.map(d=>({id:d.id,...d.data()}));
-    renderComparisonPartners();
-    const accepted=comparisons.filter(c=>c.status==='accepted');
-    if(selectedComparisonId && !accepted.some(c=>c.id===selectedComparisonId)) selectedComparisonId=null;
-    if(!selectedComparisonId && accepted.length) selectedComparisonId=accepted[0].id;
-    fillComparisonSelect();
-    subscribeSelectedComparison();
-    syncAllComparisonMetrics().catch(console.error);
-  },e=>console.error('comparison sync',e));
+
+  const uid=currentUser.uid;
+
+  unsubComparisons=onSnapshot(
+    comparisonMembershipsRef(uid),
+    async snap=>{
+      try{
+        const pairIds=snap.docs.map(d=>d.id);
+        const loaded=[];
+
+        for(const pairId of pairIds){
+          try{
+            const pairSnap=await getDoc(comparisonRef(pairId));
+            if(pairSnap.exists())loaded.push({id:pairSnap.id,...pairSnap.data()});
+          }catch(e){
+            console.warn('comparison get failed',pairId,e);
+          }
+        }
+
+        if(!currentUser || currentUser.uid!==uid)return;
+
+        comparisons=loaded;
+        renderComparisonPartners();
+
+        const accepted=comparisons.filter(c=>c.status==='accepted');
+        if(selectedComparisonId && !accepted.some(c=>c.id===selectedComparisonId)){
+          selectedComparisonId=null;
+        }
+        if(!selectedComparisonId && accepted.length){
+          selectedComparisonId=accepted[0].id;
+        }
+
+        fillComparisonSelect();
+        subscribeSelectedComparison();
+        syncAllComparisonMetrics().catch(console.error);
+      }catch(e){
+        console.error('comparison membership sync',e);
+      }
+    },
+    e=>console.error('comparison membership listener',e)
+  );
 }
 
 async function syncAllComparisonMetrics(){
   if(!currentUser || !comparisons.length)return;
   for(const c of comparisons){
-    if(c.status==='pending' || c.status==='accepted') await syncMyComparisonMetrics(c.id);
+    const isMine =
+      c.inviterUid===currentUser.uid ||
+      (Array.isArray(c.memberUids) && c.memberUids.includes(currentUser.uid));
+
+    if(isMine && (c.status==='pending' || c.status==='accepted')){
+      await syncMyComparisonMetrics(c.id);
+    }
   }
 }
+
 async function syncMyComparisonMetrics(pairId){
   if(!currentUser)return;
-  await setDoc(comparisonMembersRef(pairId,currentUser.uid),{
-    displayName:currentUser.displayName||currentUser.email||'使用者',
-    uid:currentUser.uid,
-    updatedAt:serverTimestamp()
-  },{merge:true});
+
+  await setDoc(
+    comparisonMembersRef(pairId,currentUser.uid),
+    {
+      displayName:currentUser.displayName||currentUser.email||'使用者',
+      uid:currentUser.uid,
+      updatedAt:serverTimestamp()
+    },
+    {merge:true}
+  );
 
   const col=comparisonMemberRecordsRef(pairId,currentUser.uid);
   const existing=await getDocs(col);
   const ownIds=new Set(records.map(r=>String(r.id)));
+
   let batch=writeBatch(db),ops=0;
+
   for(const d of existing.docs){
-    if(!ownIds.has(d.id)){batch.delete(d.ref);ops++}
-    if(ops>=350){await batch.commit();batch=writeBatch(db);ops=0}
+    if(!ownIds.has(d.id)){
+      batch.delete(d.ref);
+      ops++;
+    }
+    if(ops>=350){
+      await batch.commit();
+      batch=writeBatch(db);
+      ops=0;
+    }
   }
+
   for(const raw of records){
-    batch.set(doc(db,'comparisons',pairId,'members',currentUser.uid,'records',String(raw.id)),{
-      date:raw.date||'',
-      weight:num(raw.weight),
-      bodyFat:num(raw.bodyFat),
-      muscleKg:num(raw.muscleKg),
-      updatedAt:serverTimestamp()
-    });
+    batch.set(
+      doc(db,'comparisons',pairId,'members',currentUser.uid,'records',String(raw.id)),
+      {
+        date:raw.date||'',
+        weight:num(raw.weight),
+        bodyFat:num(raw.bodyFat),
+        muscleKg:num(raw.muscleKg),
+        updatedAt:serverTimestamp()
+      }
+    );
     ops++;
-    if(ops>=350){await batch.commit();batch=writeBatch(db);ops=0}
+
+    if(ops>=350){
+      await batch.commit();
+      batch=writeBatch(db);
+      ops=0;
+    }
   }
+
   if(ops)await batch.commit();
 }
 
 $('createCompareInviteBtn').addEventListener('click',async()=>{
   if(!currentUser){alert('請先登入');return}
+
   setLoading(true,'正在建立邀請…');
+
   try{
     const ref=doc(collection(db,'comparisons'));
+
     await setDoc(ref,{
       inviterUid:currentUser.uid,
       inviterName:currentUser.displayName||currentUser.email||'使用者',
@@ -315,196 +386,449 @@ $('createCompareInviteBtn').addEventListener('click',async()=>{
       status:'pending',
       createdAt:serverTimestamp()
     });
+
+    // 建立者自己的比較清單索引
+    await setDoc(
+      comparisonMembershipRef(currentUser.uid,ref.id),
+      {
+        pairId:ref.id,
+        role:'inviter',
+        createdAt:serverTimestamp()
+      }
+    );
+
     await syncMyComparisonMetrics(ref.id);
+
     const url=`${location.origin}${location.pathname}?compareInvite=${encodeURIComponent(ref.id)}`;
     $('compareInviteUrlBox').textContent=url;
     $('compareInviteUrlBox').classList.remove('hidden');
     $('copyCompareInviteBtn').classList.remove('hidden');
     $('copyCompareInviteBtn').dataset.url=url;
-  }catch(e){alert(`建立邀請失敗：${e.message}`)}
-  finally{setLoading(false)}
+  }catch(e){
+    console.error(e);
+    alert(`建立邀請失敗：${e.message}`);
+  }finally{
+    setLoading(false);
+  }
 });
+
 $('copyCompareInviteBtn').addEventListener('click',async()=>{
   const url=$('copyCompareInviteBtn').dataset.url||$('compareInviteUrlBox').textContent;
-  if(url){await navigator.clipboard.writeText(url);alert('✅ 邀請連結已複製')}
+  if(url){
+    await navigator.clipboard.writeText(url);
+    alert('✅ 邀請連結已複製');
+  }
 });
 
 async function loadIncomingInvite(id){
   if(!currentUser)return;
+
   window.switchTab('compare');
   $('incomingInviteCard').classList.remove('hidden');
   $('incomingInviteText').textContent='正在讀取邀請…';
+
   try{
     const snap=await getDoc(comparisonRef(id));
-    if(!snap.exists()){ $('incomingInviteText').textContent='這份邀請不存在或已失效。'; $('acceptInviteBtn').classList.add('hidden'); $('rejectInviteBtn').classList.add('hidden'); return; }
-    const c={id:snap.id,...snap.data()};
-    if(c.status!=='pending'){
-      $('incomingInviteText').textContent=c.status==='accepted'?'這份邀請已經被接受。':'這份邀請已經失效。';
-      $('acceptInviteBtn').classList.add('hidden');$('rejectInviteBtn').classList.add('hidden');return;
+
+    if(!snap.exists()){
+      $('incomingInviteText').textContent='這份邀請不存在或已失效。';
+      $('acceptInviteBtn').classList.add('hidden');
+      $('rejectInviteBtn').classList.add('hidden');
+      return;
     }
+
+    const c={id:snap.id,...snap.data()};
+
+    if(c.status!=='pending'){
+      $('incomingInviteText').textContent=
+        c.status==='accepted' ? '這份邀請已經被接受。' : '這份邀請已經失效。';
+      $('acceptInviteBtn').classList.add('hidden');
+      $('rejectInviteBtn').classList.add('hidden');
+      return;
+    }
+
     if(c.inviterUid===currentUser.uid){
       $('incomingInviteText').textContent='這是你自己建立的邀請連結，請把它傳給另一位使用者。';
-      $('acceptInviteBtn').classList.add('hidden');$('rejectInviteBtn').classList.add('hidden');return;
+      $('acceptInviteBtn').classList.add('hidden');
+      $('rejectInviteBtn').classList.add('hidden');
+      return;
     }
-    $('incomingInviteText').textContent=`${c.inviterName||'一位使用者'} 邀請你成為比較夥伴。接受後，雙方只會共享體重、體脂率、骨骼肌重三項紀錄。`;
-    $('acceptInviteBtn').classList.remove('hidden');$('rejectInviteBtn').classList.remove('hidden');
+
+    $('incomingInviteText').textContent=
+      `${c.inviterName||'一位使用者'} 邀請你成為比較夥伴。接受後，雙方只會共享體重、體脂率、骨骼肌重三項紀錄。`;
+
+    $('acceptInviteBtn').classList.remove('hidden');
+    $('rejectInviteBtn').classList.remove('hidden');
     $('acceptInviteBtn').onclick=()=>acceptComparisonInvite(c);
     $('rejectInviteBtn').onclick=()=>rejectComparisonInvite(c);
-  }catch(e){$('incomingInviteText').textContent=`邀請讀取失敗：${e.message}`}
+  }catch(e){
+    console.error(e);
+    $('incomingInviteText').textContent=`邀請讀取失敗：${e.message}`;
+  }
 }
+
 async function acceptComparisonInvite(c){
   setLoading(true,'正在接受邀請…');
+
   try{
-    await setDoc(comparisonRef(c.id),{
-      inviteeUid:currentUser.uid,
-      inviteeName:currentUser.displayName||currentUser.email||'使用者',
-      memberUids:[c.inviterUid,currentUser.uid],
-      status:'accepted',
-      acceptedAt:serverTimestamp()
-    },{merge:true});
+    const myName=currentUser.displayName||currentUser.email||'使用者';
+
+    await setDoc(
+      comparisonRef(c.id),
+      {
+        inviteeUid:currentUser.uid,
+        inviteeName:myName,
+        memberUids:[c.inviterUid,currentUser.uid],
+        status:'accepted',
+        acceptedAt:serverTimestamp()
+      },
+      {merge:true}
+    );
+
+    // B 只建立自己的 membership；A 的 membership 在建立邀請時已存在。
+    await setDoc(
+      comparisonMembershipRef(currentUser.uid,c.id),
+      {
+        pairId:c.id,
+        role:'invitee',
+        createdAt:serverTimestamp()
+      }
+    );
+
     await syncMyComparisonMetrics(c.id);
+
     selectedComparisonId=c.id;
     currentInviteId='';
     history.replaceState({},'',location.pathname);
     $('incomingInviteCard').classList.add('hidden');
+
     alert('✅ 已成為比較夥伴');
-  }catch(e){alert(`接受邀請失敗：${e.message}`)}
-  finally{setLoading(false)}
+  }catch(e){
+    console.error(e);
+    alert(`接受邀請失敗：${e.message}`);
+  }finally{
+    setLoading(false);
+  }
 }
+
 async function rejectComparisonInvite(c){
   try{
-    await setDoc(comparisonRef(c.id),{
-      inviteeUid:currentUser.uid,
-      inviteeName:currentUser.displayName||currentUser.email||'使用者',
-      status:'rejected',
-      rejectedAt:serverTimestamp()
-    },{merge:true});
-    currentInviteId='';history.replaceState({},'',location.pathname);$('incomingInviteCard').classList.add('hidden');
-  }catch(e){alert(`拒絕邀請失敗：${e.message}`)}
+    await setDoc(
+      comparisonRef(c.id),
+      {
+        inviteeUid:currentUser.uid,
+        inviteeName:currentUser.displayName||currentUser.email||'使用者',
+        status:'rejected',
+        rejectedAt:serverTimestamp()
+      },
+      {merge:true}
+    );
+
+    currentInviteId='';
+    history.replaceState({},'',location.pathname);
+    $('incomingInviteCard').classList.add('hidden');
+  }catch(e){
+    console.error(e);
+    alert(`拒絕邀請失敗：${e.message}`);
+  }
 }
 
 function renderComparisonPartners(){
-  const box=$('comparisonPartnerList');box.innerHTML='';
+  const box=$('comparisonPartnerList');
+  box.innerHTML='';
+
   if(!currentUser)return;
-  const list=[...comparisons].sort((a,b)=>(a.status==='accepted'?0:1)-(b.status==='accepted'?0:1));
-  if(!list.length){box.innerHTML='<div class="empty">目前沒有邀請或比較夥伴。</div>';return}
+
+  const list=[...comparisons].sort(
+    (a,b)=>(a.status==='accepted'?0:1)-(b.status==='accepted'?0:1)
+  );
+
+  if(!list.length){
+    box.innerHTML='<div class="empty">目前沒有邀請或比較夥伴。</div>';
+    return;
+  }
+
   for(const c of list){
-    const row=document.createElement('div');row.className='partner-row';
-    const state=c.status==='accepted'?'已連結':c.status==='pending'?'等待對方接受':c.status==='rejected'?'已拒絕':'已停止共享';
-    row.innerHTML=`<div class="partner-meta"><span class="partner-name">${c.status==='pending'?'邀請連結':comparisonPartnerName(c)}</span><span class="partner-state">${state}</span></div>`;
+    const row=document.createElement('div');
+    row.className='partner-row';
+
+    const state=
+      c.status==='accepted' ? '已連結' :
+      c.status==='pending' ? '等待對方接受' :
+      c.status==='rejected' ? '已拒絕' :
+      '已停止共享';
+
+    row.innerHTML=
+      `<div class="partner-meta">
+        <span class="partner-name">${c.status==='pending'?'邀請連結':comparisonPartnerName(c)}</span>
+        <span class="partner-state">${state}</span>
+      </div>`;
+
     if(c.status==='accepted'){
-      const btn=document.createElement('button');btn.className='btn btn-secondary';btn.textContent='查看比較';btn.onclick=()=>{selectedComparisonId=c.id;fillComparisonSelect();subscribeSelectedComparison();window.switchTab('compare')};row.appendChild(btn);
+      const btn=document.createElement('button');
+      btn.className='btn btn-secondary';
+      btn.textContent='查看比較';
+      btn.onclick=()=>{
+        selectedComparisonId=c.id;
+        fillComparisonSelect();
+        subscribeSelectedComparison();
+        window.switchTab('compare');
+      };
+      row.appendChild(btn);
     }
+
     box.appendChild(row);
   }
 }
 
 function fillComparisonSelect(){
-  const sel=$('comparePartnerSelect'),accepted=comparisons.filter(c=>c.status==='accepted');
+  const sel=$('comparePartnerSelect');
+  const accepted=comparisons.filter(c=>c.status==='accepted');
+
   sel.innerHTML='';
+
   for(const c of accepted){
-    const o=document.createElement('option');o.value=c.id;o.textContent=comparisonPartnerName(c);sel.appendChild(o);
+    const o=document.createElement('option');
+    o.value=c.id;
+    o.textContent=comparisonPartnerName(c);
+    sel.appendChild(o);
   }
+
   if(selectedComparisonId)sel.value=selectedComparisonId;
+
   $('compareDashboard').classList.toggle('hidden',accepted.length===0);
   $('compareNoPartner').classList.toggle('hidden',accepted.length>0);
 }
-$('comparePartnerSelect').addEventListener('change',()=>{selectedComparisonId=$('comparePartnerSelect').value;subscribeSelectedComparison()});
+
+$('comparePartnerSelect').addEventListener('change',()=>{
+  selectedComparisonId=$('comparePartnerSelect').value;
+  subscribeSelectedComparison();
+});
+
 $('comparePeriod').addEventListener('change',renderComparisonDashboard);
 
 function subscribeSelectedComparison(){
   if(unsubCompareSelf)unsubCompareSelf();
   if(unsubComparePartner)unsubComparePartner();
+
   unsubCompareSelf=unsubComparePartner=null;
-  compareSelfRecords=[];comparePartnerRecords=[];
+  compareSelfRecords=[];
+  comparePartnerRecords=[];
+
   const c=comparisons.find(x=>x.id===selectedComparisonId);
-  if(!c || c.status!=='accepted' || !currentUser){renderComparisonDashboard();return}
+
+  if(!c || c.status!=='accepted' || !currentUser){
+    renderComparisonDashboard();
+    return;
+  }
+
   const partnerUid=comparisonPartnerUid(c);
   if(!partnerUid)return;
-  unsubCompareSelf=onSnapshot(comparisonMemberRecordsRef(c.id,currentUser.uid),snap=>{
-    compareSelfRecords=snap.docs.map(d=>({id:d.id,...d.data()}));renderComparisonDashboard();
-  },e=>console.error(e));
-  unsubComparePartner=onSnapshot(comparisonMemberRecordsRef(c.id,partnerUid),snap=>{
-    comparePartnerRecords=snap.docs.map(d=>({id:d.id,...d.data()}));renderComparisonDashboard();
-  },e=>console.error(e));
+
+  unsubCompareSelf=onSnapshot(
+    comparisonMemberRecordsRef(c.id,currentUser.uid),
+    snap=>{
+      compareSelfRecords=snap.docs.map(d=>({id:d.id,...d.data()}));
+      renderComparisonDashboard();
+    },
+    e=>console.error('my compare records',e)
+  );
+
+  unsubComparePartner=onSnapshot(
+    comparisonMemberRecordsRef(c.id,partnerUid),
+    snap=>{
+      comparePartnerRecords=snap.docs.map(d=>({id:d.id,...d.data()}));
+      renderComparisonDashboard();
+    },
+    e=>console.error('partner compare records',e)
+  );
 }
 
 function filterCompareRecords(list){
   const period=$('comparePeriod').value;
-  const sorted=[...list].filter(r=>r.date).sort((a,b)=>a.date.localeCompare(b.date));
+  const sorted=[...list]
+    .filter(r=>r.date)
+    .sort((a,b)=>a.date.localeCompare(b.date));
+
   if(period==='all')return sorted;
-  const cutoff=new Date();cutoff.setDate(cutoff.getDate()-Number(period));
-  const key=`${cutoff.getFullYear()}-${String(cutoff.getMonth()+1).padStart(2,'0')}-${String(cutoff.getDate()).padStart(2,'0')}`;
+
+  const cutoff=new Date();
+  cutoff.setDate(cutoff.getDate()-Number(period));
+
+  const key=
+    `${cutoff.getFullYear()}-${String(cutoff.getMonth()+1).padStart(2,'0')}-${String(cutoff.getDate()).padStart(2,'0')}`;
+
   return sorted.filter(r=>r.date>=key);
 }
+
 function metricSummary(list,key){
   const valid=list.filter(r=>num(r[key])!=null);
-  if(!valid.length)return {current:null,delta:null,startDate:null,endDate:null};
-  return {current:num(valid[valid.length-1][key]),delta:num(valid[valid.length-1][key])-num(valid[0][key]),startDate:valid[0].date,endDate:valid[valid.length-1].date};
+
+  if(!valid.length){
+    return {current:null,delta:null,startDate:null,endDate:null};
+  }
+
+  return {
+    current:num(valid[valid.length-1][key]),
+    delta:num(valid[valid.length-1][key])-num(valid[0][key]),
+    startDate:valid[0].date,
+    endDate:valid[valid.length-1].date
+  };
 }
+
 function compareDeltaText(v,unit){
   if(v==null)return '';
   return `(${v>0?'+':''}${v.toFixed(1)}${unit})`;
 }
+
 function renderComparisonDashboard(){
   const accepted=comparisons.filter(c=>c.status==='accepted');
+
   $('compareDashboard').classList.toggle('hidden',accepted.length===0);
   $('compareNoPartner').classList.toggle('hidden',accepted.length>0);
+
   if(!accepted.length || !currentUser)return;
+
   const c=comparisons.find(x=>x.id===selectedComparisonId)||accepted[0];
   if(!c)return;
-  if(selectedComparisonId!==c.id){selectedComparisonId=c.id;fillComparisonSelect()}
-  const selfName=currentUser.displayName||'我',partnerName=comparisonPartnerName(c);
+
+  if(selectedComparisonId!==c.id){
+    selectedComparisonId=c.id;
+    fillComparisonSelect();
+  }
+
+  const selfName=currentUser.displayName||'我';
+  const partnerName=comparisonPartnerName(c);
+
   $('compareTitle').textContent=`${selfName} vs ${partnerName}`;
   $('compareSelfHead').textContent=selfName;
   $('comparePartnerHead').textContent=partnerName;
-  ['weightChartNames','fatChartNames','muscleChartNames'].forEach(id=>$(id).textContent=`${selfName} vs ${partnerName}`);
 
-  const a=filterCompareRecords(compareSelfRecords),b=filterCompareRecords(comparePartnerRecords);
-  const dates=[...a,...b].map(r=>r.date).filter(Boolean).sort();
-  $('compareRange').textContent=dates.length?`${dates[0]} → ${dates[dates.length-1]}`:'目前無資料';
+  ['weightChartNames','fatChartNames','muscleChartNames']
+    .forEach(id=>$(id).textContent=`${selfName} vs ${partnerName}`);
 
-  const aw=metricSummary(a,'weight'),bw=metricSummary(b,'weight');
-  const af=metricSummary(a,'bodyFat'),bf=metricSummary(b,'bodyFat');
-  const am=metricSummary(a,'muscleKg'),bm=metricSummary(b,'muscleKg');
+  const a=filterCompareRecords(compareSelfRecords);
+  const b=filterCompareRecords(comparePartnerRecords);
 
-  $('cmpSelfWeight').textContent=fmt(aw.current,1,'kg');$('cmpSelfWeightDelta').textContent=compareDeltaText(aw.delta,' kg');
-  $('cmpPartnerWeight').textContent=fmt(bw.current,1,'kg');$('cmpPartnerWeightDelta').textContent=compareDeltaText(bw.delta,' kg');
-  $('cmpSelfFat').textContent=fmt(af.current,1,'%');$('cmpSelfFatDelta').textContent=compareDeltaText(af.delta,'%');
-  $('cmpPartnerFat').textContent=fmt(bf.current,1,'%');$('cmpPartnerFatDelta').textContent=compareDeltaText(bf.delta,'%');
-  $('cmpSelfMuscle').textContent=fmt(am.current,1,'kg');$('cmpSelfMuscleDelta').textContent=compareDeltaText(am.delta,' kg');
-  $('cmpPartnerMuscle').textContent=fmt(bm.current,1,'kg');$('cmpPartnerMuscleDelta').textContent=compareDeltaText(bm.delta,' kg');
+  const dates=[...a,...b]
+    .map(r=>r.date)
+    .filter(Boolean)
+    .sort();
+
+  $('compareRange').textContent=
+    dates.length ? `${dates[0]} → ${dates[dates.length-1]}` : '目前無資料';
+
+  const aw=metricSummary(a,'weight');
+  const bw=metricSummary(b,'weight');
+  const af=metricSummary(a,'bodyFat');
+  const bf=metricSummary(b,'bodyFat');
+  const am=metricSummary(a,'muscleKg');
+  const bm=metricSummary(b,'muscleKg');
+
+  $('cmpSelfWeight').textContent=fmt(aw.current,1,'kg');
+  $('cmpSelfWeightDelta').textContent=compareDeltaText(aw.delta,' kg');
+  $('cmpPartnerWeight').textContent=fmt(bw.current,1,'kg');
+  $('cmpPartnerWeightDelta').textContent=compareDeltaText(bw.delta,' kg');
+
+  $('cmpSelfFat').textContent=fmt(af.current,1,'%');
+  $('cmpSelfFatDelta').textContent=compareDeltaText(af.delta,'%');
+  $('cmpPartnerFat').textContent=fmt(bf.current,1,'%');
+  $('cmpPartnerFatDelta').textContent=compareDeltaText(bf.delta,'%');
+
+  $('cmpSelfMuscle').textContent=fmt(am.current,1,'kg');
+  $('cmpSelfMuscleDelta').textContent=compareDeltaText(am.delta,' kg');
+  $('cmpPartnerMuscle').textContent=fmt(bm.current,1,'kg');
+  $('cmpPartnerMuscleDelta').textContent=compareDeltaText(bm.delta,' kg');
 
   renderDualChart('weight',a,b,selfName,partnerName,'compareWeightChart','weight');
   renderDualChart('bodyFat',a,b,selfName,partnerName,'compareFatChart','fat');
   renderDualChart('muscleKg',a,b,selfName,partnerName,'compareMuscleChart','muscle');
 }
+
 function renderDualChart(key,a,b,selfName,partnerName,canvasId,slot){
   if(typeof Chart==='undefined')return;
-  const allDates=[...new Set([...a.map(r=>r.date),...b.map(r=>r.date)])].filter(Boolean).sort();
-  const mapA=new Map(a.map(r=>[r.date,num(r[key])])),mapB=new Map(b.map(r=>[r.date,num(r[key])]));
-  const dataA=allDates.map(d=>mapA.has(d)?mapA.get(d):null),dataB=allDates.map(d=>mapB.has(d)?mapB.get(d):null);
-  const old=slot==='weight'?compareWeightChart:slot==='fat'?compareFatChart:compareMuscleChart;
+
+  const allDates=[
+    ...new Set([...a.map(r=>r.date),...b.map(r=>r.date)])
+  ].filter(Boolean).sort();
+
+  const mapA=new Map(a.map(r=>[r.date,num(r[key])]));
+  const mapB=new Map(b.map(r=>[r.date,num(r[key])]));
+
+  const dataA=allDates.map(d=>mapA.has(d)?mapA.get(d):null);
+  const dataB=allDates.map(d=>mapB.has(d)?mapB.get(d):null);
+
+  const old=
+    slot==='weight' ? compareWeightChart :
+    slot==='fat' ? compareFatChart :
+    compareMuscleChart;
+
   if(old)old.destroy();
+
   const chart=new Chart($(canvasId),{
     type:'line',
-    data:{labels:allDates,datasets:[
-      {label:selfName,data:dataA,borderWidth:3,pointRadius:4,tension:.25,spanGaps:true},
-      {label:partnerName,data:dataB,borderWidth:3,pointRadius:4,tension:.25,spanGaps:true}
-    ]},
-    options:{responsive:true,maintainAspectRatio:false,scales:{y:{beginAtZero:false}},plugins:{legend:{display:true}}}
+    data:{
+      labels:allDates,
+      datasets:[
+        {
+          label:selfName,
+          data:dataA,
+          borderWidth:3,
+          pointRadius:4,
+          tension:.25,
+          spanGaps:true
+        },
+        {
+          label:partnerName,
+          data:dataB,
+          borderWidth:3,
+          pointRadius:4,
+          tension:.25,
+          spanGaps:true
+        }
+      ]
+    },
+    options:{
+      responsive:true,
+      maintainAspectRatio:false,
+      scales:{y:{beginAtZero:false}},
+      plugins:{legend:{display:true}}
+    }
   });
-  if(slot==='weight')compareWeightChart=chart;else if(slot==='fat')compareFatChart=chart;else compareMuscleChart=chart;
+
+  if(slot==='weight')compareWeightChart=chart;
+  else if(slot==='fat')compareFatChart=chart;
+  else compareMuscleChart=chart;
 }
 
 $('revokeComparisonBtn').addEventListener('click',async()=>{
   const c=comparisons.find(x=>x.id===selectedComparisonId);
+
   if(!c || !currentUser)return;
-  if(!confirm(`確定要停止與「${comparisonPartnerName(c)}」共享比較資料嗎？停止後雙方都無法再查看此比較。`))return;
+
+  if(!confirm(
+    `確定要停止與「${comparisonPartnerName(c)}」共享比較資料嗎？停止後雙方都無法再查看此比較。`
+  ))return;
+
   try{
-    await setDoc(comparisonRef(c.id),{status:'revoked',revokedBy:currentUser.uid,revokedAt:serverTimestamp()},{merge:true});
+    await setDoc(
+      comparisonRef(c.id),
+      {
+        status:'revoked',
+        revokedBy:currentUser.uid,
+        revokedAt:serverTimestamp()
+      },
+      {merge:true}
+    );
+
     selectedComparisonId=null;
-  }catch(e){alert(`停止共享失敗：${e.message}`)}
+
+    // 自己的清單索引可以直接移除。
+    await deleteDoc(comparisonMembershipRef(currentUser.uid,c.id));
+  }catch(e){
+    console.error(e);
+    alert(`停止共享失敗：${e.message}`);
+  }
 });
 
 
