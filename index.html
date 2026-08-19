@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>體態紀錄站</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
 <style>
 :root{--bg:#fff8f1;--card:#fff;--text:#25324a;--muted:#6f7480;--line:#eadfd5;--accent:#d96c4c;--soft:#fff0e8;--danger:#c84b5f;--shadow:0 10px 30px rgba(86,57,39,.07)}
 *{box-sizing:border-box}body{margin:0;font-family:Arial,"Microsoft JhengHei",sans-serif;background:var(--bg);color:var(--text)}header{padding:24px 18px 18px;border-bottom:1px solid var(--line);background:linear-gradient(135deg,#fff3e8 0%,#fffaf6 58%,#f3f5fb 100%)}
@@ -40,7 +41,7 @@
 <div id="loading" class="loading">正在連接雲端資料…</div>
 <header><div class="wrap"><h1>體態紀錄站</h1><div class="subtitle">私人紀錄、跨裝置同步；想分享時再公開。</div><div class="accountbar" id="accountBar"><span class="status" id="authStatus">尚未登入</span><button id="loginBtn" class="btn btn-primary">使用 Google 登入</button><button id="logoutBtn" class="btn btn-secondary hidden">登出</button></div></div></header>
 <div id="privateApp">
-<div class="tabs"><div class="wrap tabrow"><button class="tabbtn active" data-tab="daily">每日紀錄</button><button class="tabbtn" data-tab="settings">目標設定</button><button class="tabbtn" data-tab="analysis">數據分析</button><button class="tabbtn" data-tab="trend">趨勢圖</button><button class="tabbtn" data-tab="compare">比較分析</button><button class="tabbtn" data-tab="share">分享設定</button></div></div>
+<div class="tabs"><div class="wrap tabrow"><button class="tabbtn active" data-tab="daily">每日紀錄</button><button class="tabbtn" data-tab="settings">目標設定</button><button class="tabbtn" data-tab="analysis">數據分析</button><button class="tabbtn" data-tab="trend">趨勢圖</button><button class="tabbtn" data-tab="compare">比較分析</button><button class="tabbtn" data-tab="export">匯出報表</button><button class="tabbtn" data-tab="share">分享設定</button></div></div>
 <main><div class="wrap">
 <section id="daily" class="tabpage active">
 <div class="card"><div class="public-head"><div><small>固定身高</small><div style="font-size:20px;font-weight:900" id="heightDisplay">尚未設定</div></div><button class="btn btn-secondary" onclick="window.switchTab('settings')">前往設定</button></div></div>
@@ -48,7 +49,14 @@
 <div class="card"><h2>最近一次測量</h2><div class="grid g4"><div class="stat"><div class="k">體重</div><div class="v" id="lastWeight">--</div></div><div class="stat"><div class="k">體脂率</div><div class="v" id="lastBodyFat">--</div></div><div class="stat"><div class="k">BMI</div><div class="v" id="lastBMI">--</div></div><div class="stat"><div class="k">骨骼肌重</div><div class="v" id="lastMuscle">--</div></div><div class="stat"><div class="k">體脂肪重量</div><div class="v" id="lastFatMass">--</div></div><div class="stat"><div class="k">基礎代謝</div><div class="v" id="lastBMR">--</div></div><div class="stat"><div class="k">身體年齡</div><div class="v" id="lastAge">--</div></div><div class="stat"><div class="k">內臟脂肪</div><div class="v" id="lastVisceral">--</div></div></div></div>
 <div class="card"><h2>歷史紀錄</h2><div class="table-wrap"><table><thead><tr><th>日期</th><th>體重</th><th>體脂率</th><th>BMI</th><th>骨骼肌重</th><th>體脂肪重量</th><th>基礎代謝</th><th>身體年齡</th><th>內臟脂肪</th><th>操作</th></tr></thead><tbody id="recordTable"></tbody></table></div><div id="emptyRecords" class="empty">尚無雲端紀錄</div></div>
 </section>
-<section id="settings" class="tabpage"><div class="card"><h2>目標設定</h2><div class="grid g3"><div><label>固定身高（cm）</label><input id="height" type="number" step="0.1"></div><div><label>目標體重（kg）</label><input id="goalWeight" type="number" step="0.1"></div><div><label>目標體脂率（%）</label><input id="goalBodyFat" type="number" step="0.1"></div><div><label>分析基準</label><select id="baselineMode"><option value="first">第一筆紀錄</option><option value="date">自訂起始日期</option></select></div><div id="baselineDateWrap" class="hidden"><label>起始日期</label><input id="baselineDate" type="date"></div></div><div class="actions"><button id="saveSettingsBtn" class="btn btn-primary">儲存設定</button></div></div><div class="card"><h2>舊資料匯入</h2><p class="note">若這台裝置之前使用過舊版 localStorage，可手動匯入一次。舊版「骨骼肌（kg）」會直接轉成新版骨骼肌重；若曾使用「骨骼肌率」版本，該欄位不會誤轉成 kg。</p><div class="actions"><button id="importLocalBtn" class="btn btn-secondary">匯入此裝置舊資料</button></div></div></section>
+<section id="settings" class="tabpage"><div class="card"><h2>目標設定</h2><div class="grid g3">
+<div><label>報表姓名</label><input id="reportName" type="text" maxlength="40" placeholder="匯出報表使用"></div>
+<div><label>性別</label><select id="gender"><option value="">未設定</option><option value="male">男性</option><option value="female">女性</option></select></div>
+<div><label>出生日期</label><input id="birthDate" type="date"></div>
+<div><label>固定身高（cm）</label><input id="height" type="number" step="0.1"></div>
+<div><label>目標體重（kg）</label><input id="goalWeight" type="number" step="0.1"></div>
+<div><label>目標體脂率（%）</label><input id="goalBodyFat" type="number" step="0.1"></div>
+<div><label>分析基準</label><select id="baselineMode"><option value="first">第一筆紀錄</option><option value="date">自訂起始日期</option></select></div><div id="baselineDateWrap" class="hidden"><label>起始日期</label><input id="baselineDate" type="date"></div></div><div class="actions"><button id="saveSettingsBtn" class="btn btn-primary">儲存設定</button></div></div><div class="card"><h2>舊資料匯入</h2><p class="note">若這台裝置之前使用過舊版 localStorage，可手動匯入一次。舊版「骨骼肌（kg）」會直接轉成新版骨骼肌重；若曾使用「骨骼肌率」版本，該欄位不會誤轉成 kg。</p><div class="actions"><button id="importLocalBtn" class="btn btn-secondary">匯入此裝置舊資料</button></div></div></section>
 <section id="analysis" class="tabpage"><div class="card"><div class="public-head"><div><small>分析區間</small><div style="font-size:20px;font-weight:900" id="analysisRange">資料不足</div></div><span class="badge" id="analysisCount">0 筆</span></div></div><div class="grid g3"><div class="stat"><div class="k">累積體重變化</div><div class="v" id="weightChange">--</div></div><div class="stat"><div class="k">累積體脂肪重量變化</div><div class="v" id="fatChange">--</div></div><div class="stat"><div class="k">累積骨骼肌重變化</div><div class="v" id="muscleChange">--</div></div></div><div class="card" style="margin-top:18px"><h2>脂肪＋肌肉減少 vs. 體重減少</h2><div class="grid g3"><div class="stat"><div class="k">脂肪＋肌肉減少</div><div class="v" id="combinedLoss">--</div></div><div class="stat"><div class="k">體重減少</div><div class="v" id="weightLoss">--</div></div><div class="stat"><div class="k">其他／水分等變化</div><div class="v" id="otherLoss">--</div></div></div><p class="note">體脂肪重量＝體重×體脂率÷100；骨骼肌重直接使用體脂機顯示的 kg。其他／水分等為體重減少扣除脂肪與骨骼肌減少後的差額，只適合作為趨勢參考。</p></div><div class="card"><h2>體重變化組成</h2><div class="grid g3"><div class="stat"><div class="k">脂肪占減重量</div><div class="v" id="fatShare">--</div></div><div class="stat"><div class="k">骨骼肌占減重量</div><div class="v" id="muscleShare">--</div></div><div class="stat"><div class="k">其他／水分占減重量</div><div class="v" id="otherShare">--</div></div></div></div><div class="card"><h2>月統計</h2><div class="table-wrap"><table><thead><tr><th>月份</th><th>筆數</th><th>體重變化</th><th>體脂率變化</th><th>骨骼肌重變化</th><th>體脂肪重量變化</th></tr></thead><tbody id="monthlyTable"></tbody></table></div></div></section>
 <section id="trend" class="tabpage"><div class="card"><h2>趨勢圖</h2><div class="grid g2"><div><label>顯示項目</label><select id="chartType"><option value="weight">體重（kg）</option><option value="bodyFat">體脂率（%）</option><option value="bmi">BMI</option><option value="muscleKg">骨骼肌重（kg）</option><option value="fatMass">體脂肪重量（kg）</option><option value="bmr">基礎代謝（kcal）</option><option value="bodyAge">身體年齡</option><option value="visceralFat">內臟脂肪</option></select></div></div><div class="chartbox"><canvas id="trendChart"></canvas></div></div></section>
 
@@ -153,6 +161,26 @@
   </div>
 </section>
 
+
+<section id="export" class="tabpage">
+  <div class="card">
+    <h2>匯出 Excel 報表</h2>
+    <p class="note">
+      匯出最近 24 筆體態紀錄，並自動產生體重、體脂率、骨骼肌重三張趨勢圖。
+      報表已設定為 A4 橫式、四邊 1 cm、水平置中，並縮放至單一頁面。
+    </p>
+    <div class="grid g3">
+      <div class="stat"><div class="k">可匯出紀錄</div><div class="v" id="exportRecordCount">0</div><div class="s">最多取最近 24 筆</div></div>
+      <div class="stat"><div class="k">報表姓名</div><div class="v" id="exportName">--</div></div>
+      <div class="stat"><div class="k">版型</div><div class="v" style="font-size:19px">A4 橫式</div><div class="s">1 cm 邊界｜單頁列印</div></div>
+    </div>
+    <div class="actions">
+      <button id="exportExcelBtn" class="btn btn-primary">📊 匯出 Excel</button>
+    </div>
+    <p class="note">BMI 與體脂率參考區間會一併放在報表下方；骨骼肌重僅呈現個人長期趨勢，不設定正常值區間。</p>
+  </div>
+</section>
+
 <section id="share" class="tabpage"><div class="card"><h2>分享設定</h2><div class="grid g2"><div><label>公開範圍</label><select id="visibility"><option value="private">🔒 不公開（預設）</option><option value="summary">👥 公開摘要</option><option value="public">🌐 公開完整紀錄</option></select></div><div><label>公開顯示名稱</label><input id="publicName" type="text" maxlength="40" placeholder="例如：PingPing"></div></div><p class="note">「公開摘要」只分享起訖日期與累積變化；「公開完整紀錄」會額外分享每日公開紀錄。私人區資料仍只有本人能讀寫。</p><div class="actions"><button id="saveShareBtn" class="btn btn-primary">儲存分享設定</button></div></div><div class="card"><h2>分享網址</h2><div id="shareUrl" class="sharebox">目前未公開</div><div class="actions"><button id="copyShareBtn" class="btn btn-secondary" disabled>複製分享網址</button></div></div></section>
 </div></main></div>
 <div id="publicApp" class="hidden"><main><div class="wrap"><div class="card"><div class="public-head"><div><span class="badge">公開分享頁</span><h2 id="publicTitle" style="margin:10px 0 0">體態紀錄</h2></div><a class="btn btn-secondary" href="./" style="text-decoration:none">回到我的紀錄站</a></div></div><div id="publicMessage" class="card">正在讀取公開資料…</div><div id="publicContent" class="hidden"><div class="grid g3"><div class="stat"><div class="k">體重變化</div><div class="v" id="pubWeightChange">--</div></div><div class="stat"><div class="k">體脂肪重量變化</div><div class="v" id="pubFatChange">--</div></div><div class="stat"><div class="k">骨骼肌重變化</div><div class="v" id="pubMuscleChange">--</div></div></div><div class="card" style="margin-top:18px"><small>分析區間</small><div style="font-weight:900;font-size:20px" id="pubRange">--</div></div><div id="publicFullBlock" class="card hidden"><h2>公開紀錄</h2><div class="table-wrap"><table><thead><tr><th>日期</th><th>體重</th><th>體脂率</th><th>BMI</th><th>骨骼肌重</th><th>體脂肪重量</th></tr></thead><tbody id="publicTable"></tbody></table></div><div class="chartbox"><canvas id="publicChart"></canvas></div></div></div></div></main></div>
@@ -162,7 +190,7 @@ import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, signO
 import { getFirestore, collection, doc, setDoc, getDoc, getDocs, deleteDoc, onSnapshot, writeBatch, serverTimestamp, query, where } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js";
 const firebaseConfig={apiKey:"AIzaSyAcGH4lhd9rPXvXFXeg65HZ48zN41ZtCFQ",authDomain:"body-composition-tracker-631f1.firebaseapp.com",projectId:"body-composition-tracker-631f1",storageBucket:"body-composition-tracker-631f1.firebasestorage.app",messagingSenderId:"100946828404",appId:"1:100946828404:web:4bd44eee9d6b1c4a6ec521"};
 const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app),provider=new GoogleAuthProvider();
-let currentUser=null,records=[],settings={height:null,goalWeight:null,goalBodyFat:null,baselineMode:"first",baselineDate:"",visibility:"private",publicName:""},editingId=null,unsubRecords=null,unsubSettings=null,trendChart=null,publicChart=null;
+let currentUser=null,records=[],settings={reportName:"",gender:"",birthDate:"",height:null,goalWeight:null,goalBodyFat:null,baselineMode:"first",baselineDate:"",visibility:"private",publicName:""},editingId=null,unsubRecords=null,unsubSettings=null,trendChart=null,publicChart=null;
 
 // 比較分析功能狀態
 let comparisons=[];
@@ -177,7 +205,7 @@ let compareFatChart=null;
 let compareMuscleChart=null;
 let currentInviteId=new URLSearchParams(location.search).get("compareInvite") || "";
 const $=id=>document.getElementById(id),num=v=>(v===""||v===null||v===undefined||!Number.isFinite(Number(v)))?null:Number(v),today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`},fmt=(v,d=1,u="")=>v==null||!Number.isFinite(Number(v))?"--":`${Number(v).toFixed(d)}${u?` ${u}`:""}`,signed=(v,d=1,u="")=>v==null||!Number.isFinite(Number(v))?"--":`${Number(v)>0?"+":""}${Number(v).toFixed(d)}${u?` ${u}`:""}`,bmi=w=>settings.height&&w?w/((settings.height/100)**2):null,fatMass=(w,f)=>w!=null&&f!=null?w*f/100:null,derive=r=>({...r,bmi:bmi(r.weight),fatMass:fatMass(r.weight,r.bodyFat)}),asc=()=>[...records].sort((a,b)=>a.date.localeCompare(b.date)),desc=()=>[...records].sort((a,b)=>b.date.localeCompare(a.date));
-window.switchTab=name=>{document.querySelectorAll('.tabbtn').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));document.querySelectorAll('.tabpage').forEach(p=>p.classList.toggle('active',p.id===name));if(name==='analysis')renderAnalysis();if(name==='trend')setTimeout(renderTrend,20);if(name==='compare')setTimeout(renderComparisonDashboard,20)};document.querySelectorAll('.tabbtn').forEach(b=>b.addEventListener('click',()=>window.switchTab(b.dataset.tab)));
+window.switchTab=name=>{document.querySelectorAll('.tabbtn').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));document.querySelectorAll('.tabpage').forEach(p=>p.classList.toggle('active',p.id===name));if(name==='analysis')renderAnalysis();if(name==='trend')setTimeout(renderTrend,20);if(name==='compare')setTimeout(renderComparisonDashboard,20);if(name==='export')updateExportSummary()};document.querySelectorAll('.tabbtn').forEach(b=>b.addEventListener('click',()=>window.switchTab(b.dataset.tab)));
 function setLoading(show,msg='正在連接雲端資料…'){$('loading').textContent=msg;$('loading').classList.toggle('hidden',!show)}
 function requireLogin(){const disabled=!currentUser;['saveRecordBtn','saveSettingsBtn','saveShareBtn','importLocalBtn'].forEach(id=>$(id).disabled=disabled)}
 function renderAuth(){if(currentUser){$('authStatus').textContent=`已登入：${currentUser.displayName||currentUser.email}`;$('loginBtn').classList.add('hidden');$('logoutBtn').classList.remove('hidden')}else{$('authStatus').textContent='尚未登入（資料不會上傳）';$('loginBtn').classList.remove('hidden');$('logoutBtn').classList.add('hidden')}requireLogin()}
@@ -187,7 +215,7 @@ function startSync(){
   if(unsubRecords)unsubRecords();
   if(unsubSettings)unsubSettings();
   unsubSettings=onSnapshot(settingsRef(),snap=>{
-    settings=snap.exists()?{...settings,...snap.data()}:{height:null,goalWeight:null,goalBodyFat:null,baselineMode:'first',baselineDate:'',visibility:'private',publicName:currentUser.displayName||''};
+    settings=snap.exists()?{...settings,...snap.data()}:{reportName:currentUser.displayName||'',gender:'',birthDate:'',height:null,goalWeight:null,goalBodyFat:null,baselineMode:'first',baselineDate:'',visibility:'private',publicName:currentUser.displayName||''};
     renderSettings();renderAll();
   },e=>console.error(e));
   unsubRecords=onSnapshot(recordsRef(),snap=>{
@@ -217,9 +245,39 @@ onAuthStateChanged(auth,user=>{
   }
   setLoading(false);
 });
-function renderSettings(){$('height').value=settings.height??'';$('goalWeight').value=settings.goalWeight??'';$('goalBodyFat').value=settings.goalBodyFat??'';$('baselineMode').value=settings.baselineMode||'first';$('baselineDate').value=settings.baselineDate||'';$('baselineDateWrap').classList.toggle('hidden',$('baselineMode').value!=='date');$('visibility').value=settings.visibility||'private';$('publicName').value=settings.publicName||currentUser?.displayName||'';$('heightDisplay').textContent=settings.height?`${settings.height} cm`:'尚未設定';updateShareUrl()}
+function renderSettings(){
+  $('reportName').value=settings.reportName||currentUser?.displayName||'';
+  $('gender').value=settings.gender||'';
+  $('birthDate').value=settings.birthDate||'';
+  $('height').value=settings.height??'';
+  $('goalWeight').value=settings.goalWeight??'';
+  $('goalBodyFat').value=settings.goalBodyFat??'';
+  $('baselineMode').value=settings.baselineMode||'first';
+  $('baselineDate').value=settings.baselineDate||'';
+  $('baselineDateWrap').classList.toggle('hidden',$('baselineMode').value!=='date');
+  $('visibility').value=settings.visibility||'private';
+  $('publicName').value=settings.publicName||currentUser?.displayName||'';
+  $('heightDisplay').textContent=settings.height?`${settings.height} cm`:'尚未設定';
+  updateShareUrl();
+  updateExportSummary();
+}
 $('baselineMode').addEventListener('change',()=>$('baselineDateWrap').classList.toggle('hidden',$('baselineMode').value!=='date'));
-$('saveSettingsBtn').addEventListener('click',async()=>{if(!currentUser)return;settings={...settings,height:num($('height').value),goalWeight:num($('goalWeight').value),goalBodyFat:num($('goalBodyFat').value),baselineMode:$('baselineMode').value,baselineDate:$('baselineDate').value};await setDoc(settingsRef(),settings,{merge:true});alert('✅ 設定已同步到雲端')});
+$('saveSettingsBtn').addEventListener('click',async()=>{
+  if(!currentUser)return;
+  settings={...settings,
+    reportName:$('reportName').value.trim(),
+    gender:$('gender').value,
+    birthDate:$('birthDate').value,
+    height:num($('height').value),
+    goalWeight:num($('goalWeight').value),
+    goalBodyFat:num($('goalBodyFat').value),
+    baselineMode:$('baselineMode').value,
+    baselineDate:$('baselineDate').value
+  };
+  await setDoc(settingsRef(),settings,{merge:true});
+  updateExportSummary();
+  alert('✅ 設定已同步到雲端');
+});
 function updatePreview(){const w=num($('weight').value),f=num($('bodyFat').value);$('previewBMI').textContent=fmt(bmi(w),1);$('previewFatMass').textContent=fmt(fatMass(w,f),1,'kg')}['weight','bodyFat'].forEach(id=>$(id).addEventListener('input',updatePreview));
 function resetForm(){editingId=null;$('date').value=today();['weight','bodyFat','muscleKg','bmr','bodyAge','visceralFat'].forEach(id=>$(id).value='');$('saveRecordBtn').textContent='💾 儲存紀錄';$('cancelEditBtn').classList.add('hidden');updatePreview()}$('cancelEditBtn').addEventListener('click',resetForm);
 $('saveRecordBtn').addEventListener('click',async()=>{if(!currentUser){alert('請先登入');return}if(!settings.height){alert('請先到「目標設定」設定固定身高');window.switchTab('settings');return}const w=num($('weight').value);if(!$('date').value||w==null){alert('請至少輸入日期與體重');return}const id=editingId||String(Date.now()),data={date:$('date').value,weight:w,bodyFat:num($('bodyFat').value),muscleKg:num($('muscleKg').value),bmr:num($('bmr').value),bodyAge:num($('bodyAge').value),visceralFat:num($('visceralFat').value),updatedAt:serverTimestamp()};await setDoc(doc(db,'users',currentUser.uid,'records',id),data,{merge:true});resetForm()});
@@ -229,7 +287,7 @@ function renderLatest(){const raw=desc()[0],ids=['lastWeight','lastBodyFat','las
 function analysisList(){const list=asc();return settings.baselineMode==='date'&&settings.baselineDate?list.filter(r=>r.date>=settings.baselineDate):list}function calcAnalysis(){const list=analysisList();if(list.length<2)return null;const a=derive(list[0]),b=derive(list[list.length-1]),wc=b.weight-a.weight,fc=(a.fatMass!=null&&b.fatMass!=null)?b.fatMass-a.fatMass:null,mc=(a.muscleKg!=null&&b.muscleKg!=null)?b.muscleKg-a.muscleKg:null,wl=a.weight-b.weight,fl=fc==null?null:-fc,ml=mc==null?null:-mc,combined=(fl!=null&&ml!=null)?fl+ml:null,other=combined==null?null:wl-combined;return{a,b,count:list.length,wc,fc,mc,wl,fl,ml,combined,other}}
 function renderAnalysis(){const x=calcAnalysis();if(!x){$('analysisRange').textContent='至少需要 2 筆紀錄';$('analysisCount').textContent=`${analysisList().length} 筆`;['weightChange','fatChange','muscleChange','combinedLoss','weightLoss','otherLoss','fatShare','muscleShare','otherShare'].forEach(id=>$(id).textContent='--');renderMonthly();return}$('analysisRange').textContent=`${x.a.date} → ${x.b.date}`;$('analysisCount').textContent=`${x.count} 筆`;$('weightChange').textContent=signed(x.wc,1,'kg');$('fatChange').textContent=signed(x.fc,1,'kg');$('muscleChange').textContent=signed(x.mc,1,'kg');if(x.wl>0&&x.combined!=null){$('combinedLoss').textContent=fmt(x.combined,1,'kg');$('weightLoss').textContent=fmt(x.wl,1,'kg');$('otherLoss').textContent=fmt(x.other,1,'kg');$('fatShare').textContent=fmt(x.fl/x.wl*100,1,'%');$('muscleShare').textContent=fmt(x.ml/x.wl*100,1,'%');$('otherShare').textContent=fmt(x.other/x.wl*100,1,'%')}else['combinedLoss','weightLoss','otherLoss','fatShare','muscleShare','otherShare'].forEach(id=>$(id).textContent='--');renderMonthly()}
 function renderMonthly(){const tb=$('monthlyTable');tb.innerHTML='';const groups={};asc().forEach(r=>(groups[r.date.slice(0,7)]||=[]).push(r));Object.keys(groups).sort().forEach(m=>{const a=derive(groups[m][0]),b=derive(groups[m][groups[m].length-1]),tr=document.createElement('tr');tr.innerHTML=`<td>${m}</td><td>${groups[m].length}</td><td>${signed(b.weight-a.weight,1,'kg')}</td><td>${a.bodyFat!=null&&b.bodyFat!=null?signed(b.bodyFat-a.bodyFat,1,'%'):'--'}</td><td>${a.muscleKg!=null&&b.muscleKg!=null?signed(b.muscleKg-a.muscleKg,1,'kg'):'--'}</td><td>${a.fatMass!=null&&b.fatMass!=null?signed(b.fatMass-a.fatMass,1,'kg'):'--'}</td>`;tb.appendChild(tr)})}
-function renderTrend(){if(typeof Chart==='undefined')return;if(trendChart){trendChart.destroy();trendChart=null}const type=$('chartType').value,list=asc().map(derive),data=list.map(r=>r[type]??null);if(!data.some(v=>v!=null))return;const labels={weight:'體重（kg）',bodyFat:'體脂率（%）',bmi:'BMI',muscleKg:'骨骼肌重（kg）',fatMass:'體脂肪重量（kg）',bmr:'基礎代謝（kcal）',bodyAge:'身體年齡',visceralFat:'內臟脂肪'};trendChart=new Chart($('trendChart'),{type:'line',data:{labels:list.map(r=>r.date),datasets:[{label:labels[type],data,borderWidth:3,pointRadius:5,tension:.25,spanGaps:true}]},options:{responsive:true,maintainAspectRatio:false,scales:{y:{beginAtZero:false}}}})}$('chartType').addEventListener('change',renderTrend);function renderAll(){renderSettings();renderHistory();renderLatest();renderAnalysis();renderTrend();renderComparisonDashboard();updatePreview()}
+function renderTrend(){if(typeof Chart==='undefined')return;if(trendChart){trendChart.destroy();trendChart=null}const type=$('chartType').value,list=asc().map(derive),data=list.map(r=>r[type]??null);if(!data.some(v=>v!=null))return;const labels={weight:'體重（kg）',bodyFat:'體脂率（%）',bmi:'BMI',muscleKg:'骨骼肌重（kg）',fatMass:'體脂肪重量（kg）',bmr:'基礎代謝（kcal）',bodyAge:'身體年齡',visceralFat:'內臟脂肪'};trendChart=new Chart($('trendChart'),{type:'line',data:{labels:list.map(r=>r.date),datasets:[{label:labels[type],data,borderWidth:3,pointRadius:5,tension:.25,spanGaps:true}]},options:{responsive:true,maintainAspectRatio:false,scales:{y:{beginAtZero:false}}}})}$('chartType').addEventListener('change',renderTrend);function renderAll(){renderSettings();renderHistory();renderLatest();renderAnalysis();renderTrend();renderComparisonDashboard();updatePreview();updateExportSummary()}
 
 
 function comparisonRef(id){return doc(db,'comparisons',id)}
@@ -830,6 +888,391 @@ $('revokeComparisonBtn').addEventListener('click',async()=>{
     alert(`停止共享失敗：${e.message}`);
   }
 });
+
+
+
+function calculateAge(birthDate){
+  if(!birthDate)return null;
+  const b=new Date(`${birthDate}T00:00:00`);
+  if(Number.isNaN(b.getTime()))return null;
+  const now=new Date();
+  let age=now.getFullYear()-b.getFullYear();
+  const md=now.getMonth()-b.getMonth();
+  if(md<0 || (md===0 && now.getDate()<b.getDate()))age--;
+  return age>=0?age:null;
+}
+
+function updateExportSummary(){
+  const count=Math.min(records.length,24);
+  if($('exportRecordCount'))$('exportRecordCount').textContent=String(count);
+  if($('exportName'))$('exportName').textContent=settings.reportName||currentUser?.displayName||'--';
+}
+
+function excelColor(hex){return hex.replace('#','').toUpperCase()}
+function solidFill(hex){return {type:'pattern',pattern:'solid',fgColor:{argb:excelColor(hex)}}}
+function thinBorder(color='D8DDE6'){
+  return {
+    top:{style:'thin',color:{argb:color}},
+    bottom:{style:'thin',color:{argb:color}},
+    left:{style:'thin',color:{argb:color}},
+    right:{style:'thin',color:{argb:color}}
+  };
+}
+
+async function makeExportChartImage(reportRows,key,title,color){
+  const canvas=document.createElement('canvas');
+  canvas.width=900;
+  canvas.height=260;
+  canvas.style.position='fixed';
+  canvas.style.left='-10000px';
+  canvas.style.top='-10000px';
+  document.body.appendChild(canvas);
+
+  const labels=reportRows.map(r=>r.date);
+  const data=reportRows.map(r=>num(r[key]));
+
+  const chart=new Chart(canvas,{
+    type:'line',
+    data:{
+      labels,
+      datasets:[{
+        label:title,
+        data,
+        borderColor:color,
+        backgroundColor:color,
+        borderWidth:3,
+        pointRadius:3,
+        pointHoverRadius:3,
+        tension:.25,
+        spanGaps:true,
+        fill:false
+      }]
+    },
+    options:{
+      responsive:false,
+      animation:false,
+      devicePixelRatio:2,
+      plugins:{legend:{display:false},title:{display:true,text:title,font:{size:17}}},
+      scales:{
+        x:{ticks:{font:{size:10},maxRotation:0,minRotation:0,autoSkip:true,maxTicksLimit:8},grid:{color:'#E5E7EB'}},
+        y:{beginAtZero:false,ticks:{font:{size:10}},grid:{color:'#E5E7EB'}}
+      }
+    }
+  });
+
+  chart.update('none');
+  const dataUrl=canvas.toDataURL('image/png');
+  chart.destroy();
+  canvas.remove();
+  return dataUrl;
+}
+
+function bodyFatReferenceRows(gender){
+  if(gender==='female'){
+    return [
+      ['18～39歲','20以下','21～34','35～39','40以上'],
+      ['40～59歲','21以下','22～35','36～40','41以上'],
+      ['60歲以上','22以下','23～36','37～41','42以上']
+    ];
+  }
+  return [
+    ['18～39歲','10以下','11～21','22～26','27以上'],
+    ['40～59歲','11以下','12～22','23～27','28以上'],
+    ['60歲以上','13以下','14～24','25～29','30以上']
+  ];
+}
+
+function ageBandIndex(age){
+  if(age==null)return -1;
+  if(age<40)return 0;
+  if(age<60)return 1;
+  return 2;
+}
+
+async function exportExcelReport(){
+  if(!currentUser){alert('請先登入');return}
+  if(typeof ExcelJS==='undefined'){alert('Excel 匯出元件尚未載入，請重新整理後再試。');return}
+  if(!settings.height){alert('請先到「目標設定」填寫固定身高。');window.switchTab('settings');return}
+  if(!records.length){alert('目前沒有可匯出的紀錄。');return}
+
+  const reportRows=asc().slice(-24).map(derive);
+  const age=calculateAge(settings.birthDate);
+  const reportName=settings.reportName||currentUser.displayName||currentUser.email||'使用者';
+  const genderText=settings.gender==='male'?'男性':settings.gender==='female'?'女性':'未設定';
+  const printDate=new Date().toLocaleDateString('zh-TW');
+
+  setLoading(true,'正在產生 Excel 報表…');
+
+  try{
+    const wb=new ExcelJS.Workbook();
+    wb.creator='體態紀錄站';
+    wb.created=new Date();
+
+    const ws=wb.addWorksheet('體態管理表',{
+      views:[{showGridLines:false}],
+      pageSetup:{
+        paperSize:9,
+        orientation:'landscape',
+        fitToPage:true,
+        fitToWidth:1,
+        fitToHeight:1,
+        horizontalCentered:true,
+        verticalCentered:false,
+        printArea:'A1:O42',
+        margins:{
+          left:0.3937,right:0.3937,top:0.3937,bottom:0.3937,
+          header:0.15,footer:0.15
+        }
+      }
+    });
+
+    const widths=[12,10,9,10,11,13,10,10,2.5,11,11,11,11,11,11];
+    widths.forEach((w,i)=>ws.getColumn(i+1).width=w);
+
+    const colors={
+      coral:'C96D50',navy:'4E648F',ink:'263244',muted:'667085',
+      grid:'D8DDE6',cream:'FFF8F3',peach:'FFF0E8',blue:'EAF0FA',
+      blue2:'DCE7F7',male:'D9EDF8',male2:'EAF5FA',
+      female:'F2D7DB',female2:'F9E8EB',green:'EDF4F0'
+    };
+
+    // Title
+    for(let c=1;c<=15;c++){
+      const cell=ws.getCell(1,c);
+      cell.fill=solidFill(colors.coral);
+      cell.font={bold:true,color:{argb:'FFFFFF'},size:16,name:'Microsoft JhengHei'};
+      cell.alignment={vertical:'middle'};
+    }
+    ws.getCell('H1').value='體態管理表';
+    ws.getCell('H1').alignment={horizontal:'center',vertical:'middle'};
+    ws.getRow(1).height=30;
+
+    // Personal info
+    for(let c=1;c<=15;c++){
+      ws.getCell(2,c).fill=solidFill(colors.cream);
+      ws.getCell(2,c).font={size:10,color:{argb:colors.ink},name:'Microsoft JhengHei'};
+      ws.getCell(2,c).alignment={vertical:'middle'};
+    }
+    const info=[
+      ['A2','姓名：'],['B2',reportName],
+      ['D2','年齡：'],['E2',age==null?'':age],
+      ['F2','性別：'],['G2',genderText],
+      ['H2','身高(cm)：'],['I2',settings.height],
+      ['M2','列印日期：'],['N2',printDate]
+    ];
+    info.forEach(([addr,val])=>ws.getCell(addr).value=val);
+    ['A2','D2','F2','H2','M2'].forEach(addr=>ws.getCell(addr).font={bold:true,size:10,color:{argb:colors.ink},name:'Microsoft JhengHei'});
+    ['B2','E2','G2','I2','N2'].forEach(addr=>{
+      ws.getCell(addr).fill=solidFill('FFFFFF');
+      ws.getCell(addr).alignment={horizontal:'center',vertical:'middle'};
+      ws.getCell(addr).border={bottom:{style:'thin',color:{argb:'C9BDB5'}}};
+    });
+    ws.getRow(2).height=23;
+
+    // Data headers
+    const headers=['日期','體重\nkg','BMI','體脂率\n%','骨骼肌重\nkg','基礎代謝\nkcal','身體年齡','內臟脂肪'];
+    headers.forEach((h,i)=>{
+      const cell=ws.getCell(4,i+1);
+      cell.value=h;
+      cell.fill=solidFill(colors.navy);
+      cell.font={bold:true,color:{argb:'FFFFFF'},size:9,name:'Microsoft JhengHei'};
+      cell.alignment={horizontal:'center',vertical:'middle',wrapText:true};
+    });
+    ws.getRow(4).height=26;
+
+    // 24 records
+    for(let i=0;i<24;i++){
+      const rowNo=5+i;
+      ws.getRow(rowNo).height=18;
+      const r=reportRows[i];
+      if(r){
+        const dateParts=r.date.split('-');
+        ws.getCell(rowNo,1).value=dateParts.length===3?`${dateParts[0]}/${dateParts[1]}/${dateParts[2]}`:r.date;
+        ws.getCell(rowNo,2).value=r.weight;
+        ws.getCell(rowNo,3).value=r.bmi;
+        ws.getCell(rowNo,4).value=r.bodyFat;
+        ws.getCell(rowNo,5).value=r.muscleKg;
+        ws.getCell(rowNo,6).value=r.bmr;
+        ws.getCell(rowNo,7).value=r.bodyAge;
+        ws.getCell(rowNo,8).value=r.visceralFat;
+      }
+      for(let c=1;c<=8;c++){
+        const cell=ws.getCell(rowNo,c);
+        cell.font={size:9,color:{argb:colors.ink},name:'Microsoft JhengHei'};
+        cell.alignment={horizontal:'center',vertical:'middle'};
+        cell.border=thinBorder(colors.grid);
+        if(i%2===0)cell.fill=solidFill('FAFBFD');
+      }
+      for(let c=2;c<=5;c++)ws.getCell(rowNo,c).numFmt='0.0';
+    }
+
+    // Chart section title
+    for(let c=10;c<=15;c++){
+      ws.getCell(4,c).fill=solidFill(colors.peach);
+      ws.getCell(4,c).font={bold:true,color:{argb:'A94F35'},size:10,name:'Microsoft JhengHei'};
+    }
+    ws.getCell('L4').value='三項趨勢';
+    ws.getCell('L4').alignment={horizontal:'center'};
+
+    // Three chart images
+    const chartSpecs=[
+      ['weight','體重變化','#4E648F','J5:O11'],
+      ['bodyFat','體脂率變化','#C96D50','J12:O18'],
+      ['muscleKg','骨骼肌重變化','#6F8D7B','J19:O25']
+    ];
+    for(const [key,title,color,range] of chartSpecs){
+      const img=await makeExportChartImage(reportRows,key,title,color);
+      const imageId=wb.addImage({base64:img,extension:'png'});
+      ws.addImage(imageId,range);
+    }
+
+    // Period summary
+    for(let c=10;c<=15;c++){
+      ws.getCell(26,c).fill=solidFill('F3EEE9');
+      ws.getCell(26,c).font={bold:true,color:{argb:'6A5144'},size:9,name:'Microsoft JhengHei'};
+    }
+    ws.getCell('L26').value='本期變化摘要';
+    ws.getCell('L26').alignment={horizontal:'center'};
+
+    const first=reportRows[0],last=reportRows[reportRows.length-1];
+    const summary=[
+      ['J27','體重變化'],['K27',first&&last?last.weight-first.weight:null],
+      ['L27','體脂率變化'],['M27',first?.bodyFat!=null&&last?.bodyFat!=null?last.bodyFat-first.bodyFat:null],
+      ['N27','骨骼肌重變化'],['O27',first?.muscleKg!=null&&last?.muscleKg!=null?last.muscleKg-first.muscleKg:null]
+    ];
+    summary.forEach(([addr,val])=>ws.getCell(addr).value=val);
+    for(let r=27;r<=28;r++){
+      ws.getRow(r).height=18;
+      for(let c=10;c<=15;c++){
+        const cell=ws.getCell(r,c);
+        cell.font={size:8,color:{argb:colors.muted},name:'Microsoft JhengHei'};
+        cell.alignment={horizontal:'center',vertical:'middle'};
+        cell.border=thinBorder('DED6D0');
+      }
+    }
+    ['K27','M27','O27'].forEach(a=>ws.getCell(a).numFmt='+0.0;-0.0;0.0');
+
+    // Reference heading
+    for(let c=1;c<=15;c++){
+      ws.getCell(30,c).fill=solidFill(colors.green);
+      ws.getCell(30,c).font={bold:true,color:{argb:'365646'},size:11,name:'Microsoft JhengHei'};
+    }
+    ws.getCell('A30').value='成人健康參考區間';
+    ws.getRow(30).height=22;
+
+    // BMI card
+    for(let c=1;c<=5;c++){
+      ws.getCell(31,c).fill=solidFill(colors.blue);
+      ws.getCell(31,c).font={bold:true,color:{argb:colors.navy},size:10,name:'Microsoft JhengHei'};
+    }
+    ws.getCell('C31').value='BMI｜18歲以上成人';
+    ws.getCell('C31').alignment={horizontal:'center'};
+    const bmiRows=[
+      ['分類','BMI 範圍'],
+      ['體重過輕','< 18.5'],
+      ['健康體重','18.5～<24'],
+      ['體重過重','24～<27'],
+      ['肥胖','≥ 27']
+    ];
+    bmiRows.forEach((arr,idx)=>{
+      const rr=32+idx;
+      ws.getRow(rr).height=20;
+      ws.getCell(rr,1).value=arr[0];
+      ws.getCell(rr,2).value=arr[1];
+      for(let c=1;c<=5;c++){
+        const cell=ws.getCell(rr,c);
+        cell.font={size:9,color:{argb:colors.ink},name:'Microsoft JhengHei'};
+        cell.alignment={horizontal:'center',vertical:'middle'};
+        cell.border=thinBorder('C7D2E6');
+        if(idx===0){
+          cell.fill=solidFill(colors.blue2);
+          cell.font={bold:true,size:9,color:{argb:colors.navy},name:'Microsoft JhengHei'};
+        }
+      }
+    });
+
+    // Highlight latest BMI category
+    if(last?.bmi!=null){
+      let row=33;
+      if(last.bmi>=27)row=36;
+      else if(last.bmi>=24)row=35;
+      else if(last.bmi>=18.5)row=34;
+      for(let c=1;c<=5;c++)ws.getCell(row,c).fill=solidFill('FFF4CC');
+    }
+
+    // Body fat cards (male + female, stacked)
+    const bodyTables=[
+      {gender:'male',title:'男性｜體脂率（%）',titleRow:31,headerRow:32,startRow:33,fill:colors.male,headFill:colors.male2,font:'2F6380'},
+      {gender:'female',title:'女性｜體脂率（%）',titleRow:36,headerRow:37,startRow:38,fill:colors.female,headFill:colors.female2,font:'8C4B55'}
+    ];
+
+    for(const t of bodyTables){
+      for(let c=10;c<=14;c++){
+        ws.getCell(t.titleRow,c).fill=solidFill(t.fill);
+        ws.getCell(t.titleRow,c).font={bold:true,color:{argb:t.font},size:10,name:'Microsoft JhengHei'};
+      }
+      ws.getCell(t.titleRow,12).value=t.title;
+      ws.getCell(t.titleRow,12).alignment={horizontal:'center'};
+
+      const head=['年齡','消瘦','標準','微胖','肥胖'];
+      head.forEach((v,i)=>{
+        const cell=ws.getCell(t.headerRow,10+i);
+        cell.value=v;
+        cell.fill=solidFill(t.headFill);
+        cell.font={bold:true,size:9,color:{argb:t.font},name:'Microsoft JhengHei'};
+        cell.alignment={horizontal:'center',vertical:'middle'};
+        cell.border=thinBorder(t.gender==='male'?'B8D5E4':'E1BFC5');
+      });
+      ws.getRow(t.headerRow).height=22;
+
+      const rows=bodyFatReferenceRows(t.gender);
+      rows.forEach((arr,idx)=>{
+        const rr=t.startRow+idx;
+        ws.getRow(rr).height=20;
+        arr.forEach((v,i)=>{
+          const cell=ws.getCell(rr,10+i);
+          cell.value=v;
+          cell.font={size:9,color:{argb:colors.ink},name:'Microsoft JhengHei'};
+          cell.alignment={horizontal:'center',vertical:'middle'};
+          cell.border=thinBorder(t.gender==='male'?'B8D5E4':'E1BFC5');
+        });
+      });
+
+      // Highlight user's sex + age band
+      if(settings.gender===t.gender){
+        const idx=ageBandIndex(age);
+        if(idx>=0){
+          const rr=t.startRow+idx;
+          for(let c=10;c<=14;c++)ws.getCell(rr,c).fill=solidFill('FFF4CC');
+        }
+      }
+    }
+
+    // Footer source line
+    ws.getCell('A42').value='資料來源：衛生福利部國民健康署 成人健康體位標準；國民健康署健康教育教材（體脂率）。';
+    ws.getCell('A42').font={size:7,color:{argb:'777777'},name:'Microsoft JhengHei'};
+    ws.getRow(42).height=16;
+
+    const buffer=await wb.xlsx.writeBuffer();
+    const blob=new Blob([buffer],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;
+    const safeName=(reportName||'體態管理').replace(/[\\/:*?"<>|]/g,'_');
+    a.download=`${safeName}_體態管理表_${new Date().toISOString().slice(0,10)}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }catch(e){
+    console.error('excel export',e);
+    alert(`Excel 匯出失敗：${e.message}`);
+  }finally{
+    setLoading(false);
+  }
+}
+
+$('exportExcelBtn').addEventListener('click',exportExcelReport);
 
 
 async function clearPublicRecords(uid){const snap=await getDocs(collection(db,'publicProfiles',uid,'records'));let batch=writeBatch(db),count=0;for(const d of snap.docs){batch.delete(d.ref);count++;if(count===400){await batch.commit();batch=writeBatch(db);count=0}}if(count)await batch.commit()}
