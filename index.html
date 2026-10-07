@@ -700,7 +700,7 @@ function subscribeSelectedComparison(){
   unsubCompareSelf=onSnapshot(
     comparisonMemberRecordsRef(c.id,currentUser.uid),
     snap=>{
-      compareSelfRecords=snap.docs.map(d=>({id:d.id,...d.data()}));
+      compareSelfRecords=snap.docs.map(d=>{const x=d.data();return {id:d.id,...x,muscleRate:num(x.muscleRate??x.muscleKg)}});
       renderComparisonDashboard();
     },
     e=>console.error('my compare records',e)
@@ -709,7 +709,7 @@ function subscribeSelectedComparison(){
   unsubComparePartner=onSnapshot(
     comparisonMemberRecordsRef(c.id,partnerUid),
     snap=>{
-      comparePartnerRecords=snap.docs.map(d=>({id:d.id,...d.data()}));
+      comparePartnerRecords=snap.docs.map(d=>{const x=d.data();return {id:d.id,...x,muscleRate:num(x.muscleRate??x.muscleKg)}});
       renderComparisonDashboard();
     },
     e=>console.error('partner compare records',e)
