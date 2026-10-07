@@ -187,7 +187,7 @@
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-auth.js";
-import { getFirestore, collection, doc, setDoc, getDoc, getDocs, deleteDoc, onSnapshot, writeBatch, serverTimestamp, query, where } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js";
+import { getFirestore, collection, doc, setDoc, getDoc, getDocs, deleteDoc, deleteField, onSnapshot, writeBatch, serverTimestamp, query, where } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js";
 const firebaseConfig={apiKey:"AIzaSyAcGH4lhd9rPXvXFXeg65HZ48zN41ZtCFQ",authDomain:"body-composition-tracker-631f1.firebaseapp.com",projectId:"body-composition-tracker-631f1",storageBucket:"body-composition-tracker-631f1.firebasestorage.app",messagingSenderId:"100946828404",appId:"1:100946828404:web:4bd44eee9d6b1c4a6ec521"};
 const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app),provider=new GoogleAuthProvider();
 let currentUser=null,records=[],settings={reportName:"",gender:"",birthDate:"",height:null,goalWeight:null,goalBodyFat:null,baselineMode:"first",baselineDate:"",visibility:"private",publicName:""},editingId=null,unsubRecords=null,unsubSettings=null,trendChart=null,publicChart=null;
@@ -280,7 +280,21 @@ $('saveSettingsBtn').addEventListener('click',async()=>{
 });
 function updatePreview(){const w=num($('weight').value),f=num($('bodyFat').value),m=num($('muscleRate').value);$('previewBMI').textContent=fmt(bmi(w),1);$('previewFatMass').textContent=fmt(fatMass(w,f),1,'kg');$('previewMuscleMass').textContent=fmt(muscleMass(w,m),2,'kg')}['weight','bodyFat','muscleRate'].forEach(id=>$(id).addEventListener('input',updatePreview));
 function resetForm(){editingId=null;$('date').value=today();['weight','bodyFat','muscleRate','bmr','bodyAge','visceralFat'].forEach(id=>$(id).value='');$('saveRecordBtn').textContent='💾 儲存紀錄';$('cancelEditBtn').classList.add('hidden');updatePreview()}$('cancelEditBtn').addEventListener('click',resetForm);
-$('saveRecordBtn').addEventListener('click',async()=>{if(!currentUser){alert('請先登入');return}if(!settings.height){alert('請先到「目標設定」設定固定身高');window.switchTab('settings');return}const w=num($('weight').value);if(!$('date').value||w==null){alert('請至少輸入日期與體重');return}const id=editingId||String(Date.now()),data={date:$('date').value,weight:w,bodyFat:num($('bodyFat').value),muscleRate:num($('muscleRate').value),muscleKg:deleteField(),bmr:num($('bmr').value),bodyAge:num($('bodyAge').value),visceralFat:num($('visceralFat').value),updatedAt:serverTimestamp()};await setDoc(doc(db,'users',currentUser.uid,'records',id),data,{merge:true});resetForm()});
+$('saveRecordBtn').addEventListener('click',async()=>{
+  if(!currentUser){alert('請先登入');return}
+  if(!settings.height){alert('請先到「目標設定」設定固定身高');window.switchTab('settings');return}
+  const w=num($('weight').value);
+  if(!$('date').value||w==null){alert('請至少輸入日期與體重');return}
+  const id=editingId||String(Date.now());
+  const data={date:$('date').value,weight:w,bodyFat:num($('bodyFat').value),muscleRate:num($('muscleRate').value),muscleKg:deleteField(),bmr:num($('bmr').value),bodyAge:num($('bodyAge').value),visceralFat:num($('visceralFat').value),updatedAt:serverTimestamp()};
+  try{
+    await setDoc(doc(db,'users',currentUser.uid,'records',id),data,{merge:true});
+    resetForm();
+  }catch(e){
+    console.error('save record',e);
+    alert(`儲存失敗：${e.message}`);
+  }
+});
 window.editRecord=id=>{const r=records.find(x=>x.id===id);if(!r)return;editingId=id;$('date').value=r.date||'';['weight','bodyFat','bmr','bodyAge','visceralFat'].forEach(k=>$(k).value=r[k]??'');$('muscleRate').value=r.muscleRate??r.muscleKg??'';$('saveRecordBtn').textContent='✅ 更新紀錄';$('cancelEditBtn').classList.remove('hidden');updatePreview();window.switchTab('daily');window.scrollTo({top:0,behavior:'smooth'})};window.deleteRecord=async id=>{if(currentUser&&confirm('確定刪除這筆紀錄？'))await deleteDoc(doc(db,'users',currentUser.uid,'records',id))};
 function renderHistory(){const tb=$('recordTable');tb.innerHTML='';desc().forEach(raw=>{const r=derive(raw),tr=document.createElement('tr');tr.innerHTML=`<td>${r.date}</td><td>${fmt(r.weight)}</td><td>${fmt(r.bodyFat,1,'%')}</td><td>${fmt(r.bmi)}</td><td>${fmt(r.muscleRate,1,'%')}</td><td>${fmt(r.muscleMass,2,'kg')}</td><td>${fmt(r.fatMass,1,'kg')}</td><td>${r.bmr??'--'}</td><td>${r.bodyAge??'--'}</td><td>${r.visceralFat??'--'}</td><td><button class="btn btn-secondary" onclick="editRecord('${r.id}')">編輯</button> <button class="btn btn-danger" onclick="deleteRecord('${r.id}')">刪除</button></td>`;tb.appendChild(tr)});$('emptyRecords').classList.toggle('hidden',records.length>0)}
 function renderLatest(){const raw=desc()[0],ids=['lastWeight','lastBodyFat','lastBMI','lastMuscle','lastFatMass','lastBMR','lastAge','lastVisceral'];if(!raw){ids.forEach(id=>$(id).textContent='--');return}const r=derive(raw);$('lastWeight').textContent=fmt(r.weight,1,'kg');$('lastBodyFat').textContent=fmt(r.bodyFat,1,'%');$('lastBMI').textContent=fmt(r.bmi);$('lastMuscle').textContent=fmt(r.muscleRate,1,'%');$('lastMuscleMass').textContent=`估算重量 ${fmt(r.muscleMass,2,'kg')}`;$('lastFatMass').textContent=fmt(r.fatMass,1,'kg');$('lastBMR').textContent=r.bmr!=null?`${r.bmr} kcal`:'--';$('lastAge').textContent=r.bodyAge??'--';$('lastVisceral').textContent=r.visceralFat??'--'}
