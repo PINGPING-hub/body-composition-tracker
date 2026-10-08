@@ -86,6 +86,10 @@
   </div>
 
   <div id="compareDashboard" class="hidden">
+    <div class="actions" style="align-items:center;flex-wrap:wrap">
+      <button type="button" id="compareResyncBtn" class="secondary">🔄 重新同步我的比較資料</button>
+      <span id="compareSyncStatus" class="note" aria-live="polite">可手動補齊新紀錄</span>
+    </div>
     <div class="card">
       <div class="compare-toolbar">
         <div>
@@ -221,7 +225,7 @@ function startSync(){
   unsubRecords=onSnapshot(recordsRef(),snap=>{
     records=snap.docs.map(d=>({id:d.id,...d.data()}));
     renderAll();
-    syncAllComparisonMetrics().catch(console.error);
+    syncAllComparisonMetrics().catch(e=>{console.error('comparison sync',e);const el=$('compareSyncStatus');if(el)el.textContent=`自動同步失敗：${e.message}`;});
   },e=>console.error(e));
   startComparisonSync();
 }
@@ -365,7 +369,7 @@ function startComparisonSync(){
 
         fillComparisonSelect();
         subscribeSelectedComparison();
-        syncAllComparisonMetrics().catch(console.error);
+        syncAllComparisonMetrics().catch(e=>{console.error('comparison sync',e);const el=$('compareSyncStatus');if(el)el.textContent=`自動同步失敗：${e.message}`;});
       }catch(e){
         console.error('comparison membership sync',e);
       }
@@ -403,6 +407,7 @@ async function syncMyComparisonMetrics(pairId){
   const col=comparisonMemberRecordsRef(pairId,currentUser.uid);
   const existing=await getDocs(col);
   const ownIds=new Set(records.map(r=>String(r.id)));
+  const existingById=new Map(existing.docs.map(d=>[d.id,d.data()]));
 
   let batch=writeBatch(db),ops=0;
 
@@ -419,18 +424,20 @@ async function syncMyComparisonMetrics(pairId){
   }
 
   for(const raw of records){
-    batch.set(
-      doc(db,'comparisons',pairId,'members',currentUser.uid,'records',String(raw.id)),
-      {
-        date:raw.date||'',
-        weight:num(raw.weight),
-        bodyFat:num(raw.bodyFat),
-        muscleRate:num(raw.muscleRate??raw.muscleKg),
-        updatedAt:serverTimestamp()
-      }
-    );
+    const payload={
+      date:raw.date||'',
+      weight:num(raw.weight),
+      bodyFat:num(raw.bodyFat),
+      muscleRate:num(raw.muscleRate??raw.muscleKg)
+    };
+    const prev=existingById.get(String(raw.id));
+    if(prev && prev.date===payload.date && num(prev.weight)===payload.weight &&
+       num(prev.bodyFat)===payload.bodyFat &&
+       num(prev.muscleRate??prev.muscleKg)===payload.muscleRate &&
+       prev.muscleRate!==undefined)continue;
+    batch.set(doc(db,'comparisons',pairId,'members',currentUser.uid,'records',String(raw.id)),
+      {...payload,updatedAt:serverTimestamp()});
     ops++;
-
     if(ops>=350){
       await batch.commit();
       batch=writeBatch(db);
@@ -678,6 +685,21 @@ $('comparePartnerSelect').addEventListener('change',()=>{
 });
 
 $('comparePeriod').addEventListener('change',renderComparisonDashboard);
+$('compareResyncBtn').addEventListener('click',async()=>{
+  const btn=$('compareResyncBtn'),status=$('compareSyncStatus');
+  btn.disabled=true;
+  status.textContent='正在同步…';
+  try{
+    if(!currentUser)throw new Error('請先登入');
+    if(!comparisons.some(c=>c.status==='accepted'))throw new Error('目前沒有已同意的比較對象');
+    await syncAllComparisonMetrics();
+    status.textContent=`同步完成（我的每日紀錄共 ${records.length} 筆），等待比較圖表更新`;
+  }catch(e){
+    console.error('manual comparison sync',e);
+    status.textContent=`同步失敗：${e.message}`;
+  }finally{btn.disabled=false}
+});
+
 
 function subscribeSelectedComparison(){
   if(unsubCompareSelf)unsubCompareSelf();
